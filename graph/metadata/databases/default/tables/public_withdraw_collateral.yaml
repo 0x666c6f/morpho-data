@@ -1,0 +1,3 @@
+table:
+  name: withdraw_collateral
+  schema: public

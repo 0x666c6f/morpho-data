@@ -1,12 +1,40 @@
 version: "3"
 
 services:
-  db:
+  postgres:
     image: postgres:15
     environment:
-      POSTGRES_DB: squid
+      POSTGRES_DB: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${DB_PORT}:5432"
+      - "5432:5432"
       # command: ["postgres", "-c", "log_statement=all"]
-    shm_size: 1gb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  hasura:
+    image: hasura/graphql-engine:v2.37.0.cli-migrations-v3
+    volumes:
+      - "./graph/metadata:/hasura-metadata"
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      HASURA_GRAPHQL_JWT_SECRET: '{"type":"HS256", "key": "this-is-a-generic-HS256-secret-key-and-you-should-really-change-it"}'
+      HASURA_GRAPHQL_ADMIN_SECRET: changeme
+      ## postgres database to store Hasura metadata
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      ## this env var can be used to add the above postgres database to Hasura as a data source. this can be removed/updated based on your needs
+      PG_DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      ## enable the console served by server
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true" # set to "false" to disable console
+      ## enable debugging mode. It is recommended to disable this in production
+      HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: public
+    depends_on:
+      postgres:
+        condition: service_healthy

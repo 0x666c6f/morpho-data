@@ -1,0 +1,3 @@
+table:
+  name: set_authorization
+  schema: public

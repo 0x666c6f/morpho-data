@@ -1,6 +1,4 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
-import * as marshal from "./marshal"
-import {MarketParams} from "./_marketParams"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
 export class CreateMarket {
@@ -11,8 +9,20 @@ export class CreateMarket {
     @PrimaryColumn_()
     id!: string
 
-    @Column_("jsonb", {transformer: {to: obj => obj.toJSON(), from: obj => obj == null ? undefined : new MarketParams(undefined, obj)}, nullable: false})
-    marketParams!: MarketParams
+    @StringColumn_({nullable: false})
+    loanToken!: string
+
+    @StringColumn_({nullable: false})
+    collateralToken!: string
+
+    @StringColumn_({nullable: false})
+    oracle!: string
+
+    @StringColumn_({nullable: false})
+    irm!: string
+
+    @BigIntColumn_({nullable: false})
+    lltv!: bigint
 
     @IntColumn_({nullable: false})
     chain!: number

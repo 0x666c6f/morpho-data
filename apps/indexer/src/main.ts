@@ -1,6 +1,5 @@
 import { TypeormDatabase } from "@subsquid/typeorm-store"
 import { processor } from "./processor"
-import { Entity } from "@subsquid/typeorm-store/lib/store"
 import { handleEvent } from "./handlers/genericHandler"
 
 processor.run(new TypeormDatabase({ supportHotBlocks: true }), async ctx => {

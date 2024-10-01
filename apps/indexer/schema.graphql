@@ -40,18 +40,14 @@ type EnableLltv @entity {
 
 type CreateMarket @entity {
   id: ID!
-  marketParams: MarketParams!
-  chain: Int!
-  blockNumber: Int!
-  blockTimestamp: DateTime!
-}
-
-type MarketParams {
   loanToken: String!
   collateralToken: String!
   oracle: String!
   irm: String!
   lltv: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
 }
 
 type Supply @entity {

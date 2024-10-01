@@ -5,8 +5,8 @@ import {
   Borrow,
   CreateMarket,
   Liquidate,
-  MarketParams,
   Repay,
+  Supply,
   SupplyCollateral,
   Withdraw,
   WithdrawCollateral,
@@ -19,6 +19,7 @@ type EventClass =
   | typeof CreateMarket
   | typeof Liquidate
   | typeof Repay
+  | typeof Supply
   | typeof SupplyCollateral
   | typeof Withdraw
   | typeof WithdrawCollateral
@@ -29,6 +30,7 @@ const eventMapping: Record<string, { event: any; model: EventClass }> = {
   [events.CreateMarket.topic]: { event: events.CreateMarket, model: CreateMarket },
   [events.Liquidate.topic]: { event: events.Liquidate, model: Liquidate },
   [events.Repay.topic]: { event: events.Repay, model: Repay },
+  [events.Supply.topic]: { event: events.Supply, model: Supply },
   [events.SupplyCollateral.topic]: { event: events.SupplyCollateral, model: SupplyCollateral },
   [events.Withdraw.topic]: { event: events.Withdraw, model: Withdraw },
   [events.WithdrawCollateral.topic]: { event: events.WithdrawCollateral, model: WithdrawCollateral },
@@ -55,13 +57,7 @@ export function handleEvent(log: Log) {
     return new model({
       ...baseEventData,
       ...decodedEvent,
-      marketParams: new MarketParams({
-        loanToken: decodedEvent.marketParams.loanToken,
-        collateralToken: decodedEvent.marketParams.collateralToken,
-        oracle: decodedEvent.marketParams.oracle,
-        irm: decodedEvent.marketParams.irm,
-        lltv: decodedEvent.marketParams.lltv,
-      }),
+      ...decodedEvent.marketParams,
     })
   }
 

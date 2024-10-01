@@ -1,5 +1,5 @@
-module.exports = class Data1727807884871 {
-    name = 'Data1727807884871'
+module.exports = class Data1727808589740 {
+    name = 'Data1727808589740'
 
     async up(db) {
         await db.query(`CREATE TABLE "set_owner" ("id" character varying NOT NULL, "new_owner" text NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_b9aa020e0486adfae9531315479" PRIMARY KEY ("id"))`)
@@ -7,7 +7,7 @@ module.exports = class Data1727807884871 {
         await db.query(`CREATE TABLE "set_fee_recipient" ("id" character varying NOT NULL, "new_fee_recipient" text NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_177e4d76c772ce4ccf90df13c46" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "enable_irm" ("id" character varying NOT NULL, "irm" text NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_a041290e3aab3205306b7e315db" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "enable_lltv" ("id" character varying NOT NULL, "lltv" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_a65e362d4330952d03f3e589f96" PRIMARY KEY ("id"))`)
-        await db.query(`CREATE TABLE "create_market" ("id" character varying NOT NULL, "market_params" jsonb NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_5b1ec662c2de0afc4fd2c1d1d8d" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "create_market" ("id" character varying NOT NULL, "loan_token" text NOT NULL, "collateral_token" text NOT NULL, "oracle" text NOT NULL, "irm" text NOT NULL, "lltv" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_5b1ec662c2de0afc4fd2c1d1d8d" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "supply" ("id" character varying NOT NULL, "caller" text NOT NULL, "on_behalf" text NOT NULL, "assets" numeric NOT NULL, "shares" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_11dcdc2def0eb6d10ed3ae0180d" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "withdraw" ("id" character varying NOT NULL, "caller" text NOT NULL, "on_behalf" text NOT NULL, "receiver" text NOT NULL, "assets" numeric NOT NULL, "shares" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_5c172f81689173f75bf5906ef22" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "borrow" ("id" character varying NOT NULL, "caller" text NOT NULL, "on_behalf" text NOT NULL, "receiver" text NOT NULL, "assets" numeric NOT NULL, "shares" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_dff0c680b9c6fc99f5a20d67a97" PRIMARY KEY ("id"))`)
