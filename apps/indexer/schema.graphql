@@ -4,17 +4,14 @@ type SetOwner @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type SetFee @entity {
   id: ID!
-  marketId: String!
   newFee: BigInt!
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type SetFeeRecipient @entity {
@@ -23,7 +20,6 @@ type SetFeeRecipient @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type EnableIrm @entity {
@@ -32,7 +28,6 @@ type EnableIrm @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type EnableLltv @entity {
@@ -41,17 +36,14 @@ type EnableLltv @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type CreateMarket @entity {
   id: ID!
-  marketId: String!
   marketParams: MarketParams!
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type MarketParams {
@@ -64,7 +56,6 @@ type MarketParams {
 
 type Supply @entity {
   id: ID!
-  marketId: String!
   caller: String!
   onBehalf: String!
   assets: BigInt!
@@ -72,12 +63,10 @@ type Supply @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type Withdraw @entity {
   id: ID!
-  marketId: String!
   caller: String!
   onBehalf: String!
   receiver: String!
@@ -86,7 +75,6 @@ type Withdraw @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type Borrow @entity {
@@ -99,12 +87,10 @@ type Borrow @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type Repay @entity {
   id: ID!
-  marketId: String!
   caller: String!
   onBehalf: String!
   assets: BigInt!
@@ -112,24 +98,20 @@ type Repay @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type SupplyCollateral @entity {
   id: ID!
-  marketId: String!
   caller: String!
   onBehalf: String!
   assets: BigInt!
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type WithdrawCollateral @entity {
   id: ID!
-  marketId: String!
   caller: String!
   onBehalf: String!
   receiver: String!
@@ -137,12 +119,10 @@ type WithdrawCollateral @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type Liquidate @entity {
   id: ID!
-  marketId: String!
   caller: String!
   borrower: String!
   repaidAssets: BigInt!
@@ -153,7 +133,6 @@ type Liquidate @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type FlashLoan @entity {
@@ -164,7 +143,6 @@ type FlashLoan @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type SetAuthorization @entity {
@@ -176,7 +154,6 @@ type SetAuthorization @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type IncrementNonce @entity {
@@ -187,17 +164,14 @@ type IncrementNonce @entity {
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }
 
 type AccrueInterest @entity {
   id: ID!
-  marketId: String!
   prevBorrowRate: BigInt!
   interest: BigInt!
   feeShares: BigInt!
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
-  transactionHash: String!
 }

@@ -10,9 +10,6 @@ export class SupplyCollateral {
     id!: string
 
     @StringColumn_({nullable: false})
-    marketId!: string
-
-    @StringColumn_({nullable: false})
     caller!: string
 
     @StringColumn_({nullable: false})
@@ -29,7 +26,4 @@ export class SupplyCollateral {
 
     @DateTimeColumn_({nullable: false})
     blockTimestamp!: Date
-
-    @StringColumn_({nullable: false})
-    transactionHash!: string
 }

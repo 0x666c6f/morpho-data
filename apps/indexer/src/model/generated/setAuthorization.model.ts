@@ -29,7 +29,4 @@ export class SetAuthorization {
 
     @DateTimeColumn_({nullable: false})
     blockTimestamp!: Date
-
-    @StringColumn_({nullable: false})
-    transactionHash!: string
 }

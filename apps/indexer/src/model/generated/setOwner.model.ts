@@ -20,7 +20,4 @@ export class SetOwner {
 
     @DateTimeColumn_({nullable: false})
     blockTimestamp!: Date
-
-    @StringColumn_({nullable: false})
-    transactionHash!: string
 }

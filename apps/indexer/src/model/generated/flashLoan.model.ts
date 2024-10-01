@@ -26,7 +26,4 @@ export class FlashLoan {
 
     @DateTimeColumn_({nullable: false})
     blockTimestamp!: Date
-
-    @StringColumn_({nullable: false})
-    transactionHash!: string
 }

@@ -10,9 +10,6 @@ export class Liquidate {
     id!: string
 
     @StringColumn_({nullable: false})
-    marketId!: string
-
-    @StringColumn_({nullable: false})
     caller!: string
 
     @StringColumn_({nullable: false})
@@ -41,7 +38,4 @@ export class Liquidate {
 
     @DateTimeColumn_({nullable: false})
     blockTimestamp!: Date
-
-    @StringColumn_({nullable: false})
-    transactionHash!: string
 }
