@@ -1,4 +1,4 @@
-import { Log } from "../processor"
+import { Log, ProcessorContext } from "../processor"
 import { events } from "../abi/MorphoBlue"
 import {
   AccrueInterest,
@@ -12,6 +12,8 @@ import {
   WithdrawCollateral,
 } from "../model"
 import { CHAIN_ID } from "../constants"
+import { upsertAsset } from "./assetHandler"
+import { Store } from "@subsquid/typeorm-store"
 
 type EventClass =
   | typeof AccrueInterest
@@ -36,7 +38,7 @@ const eventMapping: Record<string, { event: any; model: EventClass }> = {
   [events.WithdrawCollateral.topic]: { event: events.WithdrawCollateral, model: WithdrawCollateral },
 }
 
-export function handleEvent(log: Log) {
+export async function handleEvent(ctx: ProcessorContext<Store>, log: Log) {
   const eventData = eventMapping[log.topics[0]]
   if (!eventData) {
     throw new Error(`Unsupported event topic: ${log.topics[0]}`)
@@ -54,6 +56,7 @@ export function handleEvent(log: Log) {
   }
 
   if (model === CreateMarket) {
+    await upsertAsset(ctx, decodedEvent.marketParams.loanToken)
     return new model({
       ...baseEventData,
       ...decodedEvent,
