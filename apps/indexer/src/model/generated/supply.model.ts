@@ -10,6 +10,9 @@ export class Supply {
     id!: string
 
     @StringColumn_({nullable: false})
+    marketId!: string
+
+    @StringColumn_({nullable: false})
     caller!: string
 
     @StringColumn_({nullable: false})

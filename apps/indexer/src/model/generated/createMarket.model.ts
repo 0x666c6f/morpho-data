@@ -10,6 +10,9 @@ export class CreateMarket {
     id!: string
 
     @StringColumn_({nullable: false})
+    marketId!: string
+
+    @StringColumn_({nullable: false})
     loanToken!: string
 
     @StringColumn_({nullable: false})

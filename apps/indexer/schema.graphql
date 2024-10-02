@@ -8,6 +8,7 @@ type SetOwner @entity {
 
 type SetFee @entity {
   id: ID!
+  marketId: String!
   newFee: BigInt!
   chain: Int!
   blockNumber: Int!
@@ -40,6 +41,7 @@ type EnableLltv @entity {
 
 type CreateMarket @entity {
   id: ID!
+  marketId: String!
   loanToken: String!
   collateralToken: String!
   oracle: String!
@@ -52,6 +54,7 @@ type CreateMarket @entity {
 
 type Supply @entity {
   id: ID!
+  marketId: String!
   caller: String!
   onBehalf: String!
   assets: BigInt!
@@ -63,6 +66,7 @@ type Supply @entity {
 
 type Withdraw @entity {
   id: ID!
+  marketId: String!
   caller: String!
   onBehalf: String!
   receiver: String!
@@ -75,6 +79,7 @@ type Withdraw @entity {
 
 type Borrow @entity {
   id: ID!
+  marketId: String!
   caller: String!
   onBehalf: String!
   receiver: String!
@@ -87,6 +92,7 @@ type Borrow @entity {
 
 type Repay @entity {
   id: ID!
+  marketId: String!
   caller: String!
   onBehalf: String!
   assets: BigInt!
@@ -98,6 +104,7 @@ type Repay @entity {
 
 type SupplyCollateral @entity {
   id: ID!
+  marketId: String!
   caller: String!
   onBehalf: String!
   assets: BigInt!
@@ -108,6 +115,7 @@ type SupplyCollateral @entity {
 
 type WithdrawCollateral @entity {
   id: ID!
+  marketId: String!
   caller: String!
   onBehalf: String!
   receiver: String!
@@ -119,6 +127,7 @@ type WithdrawCollateral @entity {
 
 type Liquidate @entity {
   id: ID!
+  marketId: String!
   caller: String!
   borrower: String!
   repaidAssets: BigInt!
@@ -164,6 +173,7 @@ type IncrementNonce @entity {
 
 type AccrueInterest @entity {
   id: ID!
+  marketId: String!
   prevBorrowRate: BigInt!
   interest: BigInt!
   feeShares: BigInt!

@@ -15,7 +15,6 @@ import { CHAIN_ID } from "../constants"
 import { upsertAsset } from "./assetHandler"
 import { Store } from "@subsquid/typeorm-store"
 import { upsertOracle } from "./oracleHandler"
-import { getAddress } from "viem"
 
 type EventClass =
   | typeof AccrueInterest
@@ -27,6 +26,8 @@ type EventClass =
   | typeof SupplyCollateral
   | typeof Withdraw
   | typeof WithdrawCollateral
+
+type EventInstance = InstanceType<EventClass>
 
 const eventMapping: Record<string, { event: any; model: EventClass }> = {
   [events.AccrueInterest.topic]: { event: events.AccrueInterest, model: AccrueInterest },
@@ -40,7 +41,7 @@ const eventMapping: Record<string, { event: any; model: EventClass }> = {
   [events.WithdrawCollateral.topic]: { event: events.WithdrawCollateral, model: WithdrawCollateral },
 }
 
-export async function handleEvent(ctx: ProcessorContext<Store>, log: Log) {
+export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventInstance> {
   const eventData = eventMapping[log.topics[0]]
   if (!eventData) {
     throw new Error(`Unsupported event topic: ${log.topics[0]}`)
@@ -50,28 +51,34 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log) {
   const decodedEvent = event.decode(log)
 
   const baseEventData = {
-    id: decodedEvent.id,
     blockNumber: log.block.height,
     blockTimestamp: new Date(log.block.timestamp),
     transactionHash: log.transaction?.hash,
     chain: CHAIN_ID,
   }
 
+  let entityModel: EventInstance
+
   if (model === CreateMarket) {
     await Promise.all([
-      upsertAsset(ctx, getAddress(decodedEvent.marketParams.loanToken)),
-      upsertAsset(ctx, getAddress(decodedEvent.marketParams.collateralToken)),
-      upsertOracle(ctx, getAddress(decodedEvent.marketParams.oracle)),
+      upsertAsset(ctx, decodedEvent.marketParams.loanToken),
+      upsertAsset(ctx, decodedEvent.marketParams.collateralToken),
+      upsertOracle(ctx, decodedEvent.marketParams.oracle),
     ])
-    return new model({
+    entityModel = new CreateMarket({
       ...baseEventData,
       ...decodedEvent,
       ...decodedEvent.marketParams,
     })
+  } else {
+    entityModel = new model({
+      ...baseEventData,
+      ...decodedEvent,
+    })
   }
 
-  return new model({
-    ...baseEventData,
-    ...decodedEvent,
-  })
+  entityModel.id = log.id
+  entityModel.marketId = decodedEvent.id
+
+  return entityModel
 }
