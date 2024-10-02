@@ -177,3 +177,9 @@ type Asset @entity {
   symbol: String!
   decimals: Int!
 }
+
+type Oracle @entity {
+  id: ID!
+  price: BigInt
+  lastPriceFetchTimestamp: DateTime!
+}

@@ -4,7 +4,7 @@ import { ProcessorContext } from "../processor"
 import ERC20_ABI from "../../abi/ERC20.json"
 import { Address, getContract } from "viem"
 import { publicClient } from "../services/chain"
-import { MAKER } from "../constants"
+import { MAKER, ZERO_ADDRESS } from "../constants"
 
 export async function upsertAsset(ctx: ProcessorContext<Store>, address: Address): Promise<Asset> {
   let asset = await ctx.store.get(Asset, address)
@@ -14,23 +14,25 @@ export async function upsertAsset(ctx: ProcessorContext<Store>, address: Address
     const erc20 = getContract({
       address: address,
       abi: ERC20_ABI,
-      // 1a. Insert a single client
       client: publicClient,
     })
     if (address === MAKER) {
       asset.symbol = "MKR"
       asset.decimals = 18
+    } else if (address === ZERO_ADDRESS) {
+      asset.symbol = "ZERO_ADDRESS"
+      asset.decimals = 18
     } else {
       try {
-        const symbol = (await erc20.read.symbol()) as string
-        asset.symbol = symbol
+        const symbol = await erc20.read.symbol()
+        asset.symbol = symbol as string
       } catch (error) {
         asset.symbol = "UNKNOWN"
       }
 
       try {
-        const decimals = (await erc20.read.decimals()) as number
-        asset.decimals = decimals
+        const decimals = await erc20.read.decimals()
+        asset.decimals = decimals as number
       } catch (error) {
         asset.decimals = 18
       }

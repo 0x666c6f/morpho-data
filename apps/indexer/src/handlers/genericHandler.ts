@@ -14,6 +14,8 @@ import {
 import { CHAIN_ID } from "../constants"
 import { upsertAsset } from "./assetHandler"
 import { Store } from "@subsquid/typeorm-store"
+import { upsertOracle } from "./oracleHandler"
+import { getAddress } from "viem"
 
 type EventClass =
   | typeof AccrueInterest
@@ -56,7 +58,11 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log) {
   }
 
   if (model === CreateMarket) {
-    await upsertAsset(ctx, decodedEvent.marketParams.loanToken)
+    await Promise.all([
+      upsertAsset(ctx, getAddress(decodedEvent.marketParams.loanToken)),
+      upsertAsset(ctx, getAddress(decodedEvent.marketParams.collateralToken)),
+      upsertOracle(ctx, getAddress(decodedEvent.marketParams.oracle)),
+    ])
     return new model({
       ...baseEventData,
       ...decodedEvent,
