@@ -3,10 +3,10 @@ module.exports = class LiquidationViews00000000000002 {
 
   async up(db) {
     await db.query(`
-      CREATE VIEW borrow_positions AS
+      CREATE OR REPLACE VIEW borrow_positions AS
       SELECT
         borrower,
-        id AS market_id,
+        market_id,
         SUM(
           borrowed_shares) - SUM(
           repaid_shares) - SUM(
@@ -18,7 +18,7 @@ module.exports = class LiquidationViews00000000000002 {
       FROM (
         SELECT
           be.on_behalf AS borrower,
-          be.id,
+          be.market_id,
           be.shares AS borrowed_shares,
           be.assets AS borrowed_assets,
           0 AS repaid_shares,
@@ -42,7 +42,7 @@ module.exports = class LiquidationViews00000000000002 {
         UNION ALL
         SELECT
           le.borrower,
-          le.id,
+          le.market_id,
           0 AS borrowed_shares,
           0 AS borrowed_assets,
           0 AS repaid_shares,
@@ -53,7 +53,7 @@ module.exports = class LiquidationViews00000000000002 {
           liquidate le) AS events
       GROUP BY
         borrower,
-        id
+        market_id
       HAVING
         SUM(
           borrowed_shares) - SUM(
@@ -72,7 +72,7 @@ module.exports = class LiquidationViews00000000000002 {
       FROM (
         SELECT
           sce.on_behalf AS borrower,
-          sce.id AS market_id,
+          sce.market_id,
           sce.assets AS supplied_assets,
           0 AS withdrawn_assets,
           0 AS seized_assets
@@ -81,7 +81,7 @@ module.exports = class LiquidationViews00000000000002 {
         UNION ALL
         SELECT
           wce.on_behalf,
-          wce.id AS market_id,
+          wce.market_id,
           0 AS supplied_assets,
           wce.assets AS withdrawn_assets,
           0 AS seized_assets
@@ -90,7 +90,7 @@ module.exports = class LiquidationViews00000000000002 {
         UNION ALL
         SELECT
           le.borrower,
-          le.id AS market_id,
+          le.market_id,
           0 AS supplied_assets,
           0 AS withdrawn_assets,
           le.seized_assets AS seized_assets
@@ -128,7 +128,7 @@ module.exports = class LiquidationViews00000000000002 {
             borrow_positions bp
           LEFT JOIN supply_collateral_positions sp ON bp.borrower = sp.borrower
             AND bp.market_id ::text = sp.market_id ::text
-          JOIN create_market ma ON bp.market_id ::text = ma.id ::text
+          JOIN create_market ma ON bp.market_id ::text = ma.market_id ::text
           JOIN asset la ON ma.loan_token = la.id ::text
           JOIN asset ca ON ma.collateral_token = ca.id ::text
           JOIN oracle o ON ma.oracle = o.id ::text
