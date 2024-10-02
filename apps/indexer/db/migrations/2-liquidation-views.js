@@ -3,6 +3,127 @@ module.exports = class LiquidationViews00000000000002 {
 
   async up(db) {
     await db.query(`
+      -- Indexes for borrow table
+      CREATE INDEX idx_borrow_on_behalf ON borrow(on_behalf);
+      CREATE INDEX idx_borrow_market_id ON borrow(market_id);
+      CREATE INDEX idx_borrow_on_behalf_market_id ON borrow(on_behalf, market_id);
+
+      -- Indexes for repay table
+      CREATE INDEX idx_repay_on_behalf ON repay(on_behalf);
+      CREATE INDEX idx_repay_market_id ON repay(market_id);
+      CREATE INDEX idx_repay_on_behalf_market_id ON repay(on_behalf, market_id);
+
+      -- Indexes for liquidate table
+      CREATE INDEX idx_liquidate_borrower ON liquidate(borrower);
+      CREATE INDEX idx_liquidate_market_id ON liquidate(market_id);
+      CREATE INDEX idx_liquidate_borrower_market_id ON liquidate(borrower, market_id);
+
+      -- Indexes for supply_collateral table
+      CREATE INDEX idx_supply_collateral_on_behalf ON supply_collateral(on_behalf);
+      CREATE INDEX idx_supply_collateral_market_id ON supply_collateral(market_id);
+      CREATE INDEX idx_supply_collateral_on_behalf_market_id ON supply_collateral(on_behalf, market_id);
+
+      -- Indexes for withdraw_collateral table
+      CREATE INDEX idx_withdraw_collateral_on_behalf ON withdraw_collateral(on_behalf);
+      CREATE INDEX idx_withdraw_collateral_market_id ON withdraw_collateral(market_id);
+      CREATE INDEX idx_withdraw_collateral_on_behalf_market_id ON withdraw_collateral(on_behalf, market_id);
+
+      -- Indexes for create_market table
+      CREATE INDEX idx_create_market_market_id ON create_market(market_id);
+      CREATE INDEX idx_create_market_oracle ON create_market(oracle);
+      CREATE INDEX idx_create_market_loan_token ON create_market(loan_token);
+      CREATE INDEX idx_create_market_collateral_token ON create_market(collateral_token);
+
+      -- Indexes for oracle table
+      CREATE INDEX idx_oracle_id ON oracle(id);
+
+      -- Indexes for asset table
+      CREATE INDEX idx_asset_id ON asset(id);
+
+      -- Indexes for accrue_interest table
+      CREATE INDEX idx_accrue_interest_market_id ON accrue_interest(market_id);
+      CREATE INDEX idx_accrue_interest_block_timestamp ON accrue_interest(block_timestamp);
+      CREATE INDEX idx_accrue_interest_market_id_block_timestamp ON accrue_interest(market_id, block_timestamp);
+
+      -- Additional indexes for timestamp-based queries
+      CREATE INDEX idx_borrow_block_timestamp ON borrow(block_timestamp);
+      CREATE INDEX idx_supply_collateral_block_timestamp ON supply_collateral(block_timestamp);
+      CREATE INDEX idx_repay_block_timestamp ON repay(block_timestamp);
+      CREATE INDEX idx_liquidate_block_timestamp ON liquidate(block_timestamp);
+      CREATE INDEX idx_withdraw_collateral_block_timestamp ON withdraw_collateral(block_timestamp);
+    `)
+    await db.query(`
+      -- Constants
+      CREATE OR REPLACE FUNCTION get_wad() RETURNS numeric AS $$
+      BEGIN
+          RETURN 1e18::numeric;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION get_virtual_assets() RETURNS numeric AS $$
+      BEGIN
+          RETURN 1e9::numeric;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION get_virtual_shares() RETURNS numeric AS $$
+      BEGIN
+          RETURN 1e9::numeric;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      -- Helper functions
+      CREATE OR REPLACE FUNCTION mul_div_up(x numeric, y numeric, z numeric) RETURNS numeric AS $$
+      BEGIN
+          RETURN (x * y + (z - 1)) / z;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION mul_div_down(x numeric, y numeric, z numeric) RETURNS numeric AS $$
+      BEGIN
+          RETURN (x * y) / z;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION w_mul_down(x numeric, y numeric) RETURNS numeric AS $$
+      BEGIN
+          RETURN (x * y) / get_wad();
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION w_div_up(x numeric, y numeric) RETURNS numeric AS $$
+      BEGIN
+          RETURN (x * get_wad() + y - 1) / y;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION w_taylor_compounded(x numeric, n numeric) RETURNS numeric AS $$
+      DECLARE
+          first_term numeric;
+          second_term numeric;
+          third_term numeric;
+      BEGIN
+          first_term := x * n;
+          second_term := mul_div_down(first_term, first_term, 1e18::numeric * 2);
+          third_term := mul_div_down(second_term, first_term, 1e18::numeric * 3);
+          RETURN first_term + second_term + third_term;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION to_assets_up(shares numeric, total_assets numeric, total_shares numeric) RETURNS numeric AS $$
+      BEGIN
+          RETURN mul_div_up(shares, total_assets + get_virtual_assets(), total_shares + get_virtual_shares());
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION to_assets_down(shares numeric, total_assets numeric, total_shares numeric) RETURNS numeric AS $$
+      BEGIN
+          RETURN mul_div_down(shares, total_assets + get_virtual_assets(), total_shares + get_virtual_shares());
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+    `)
+
+    await db.query(`
       CREATE OR REPLACE VIEW borrow_positions AS
       SELECT
         borrower,
@@ -106,65 +227,76 @@ module.exports = class LiquidationViews00000000000002 {
           seized_assets) > 0;
     `)
     await db.query(`
-          CREATE OR REPLACE VIEW aggregated_positions AS WITH positions AS (
-          SELECT
-            bp.borrower,
-            bp.market_id,
-            bp.net_borrow_assets,
-            sp.net_collateral_assets,
-            la.symbol AS loan_asset_symbol,
-            la.decimals AS loan_asset_decimals,
-            ca.symbol AS collateral_asset_symbol,
-            ca.decimals AS collateral_asset_decimals,
-            ma.lltv AS liquidation_threshold,
-            o.price AS oracle_price,
-            (sp.net_collateral_assets * o.price) ::double precision / (power(10::double precision,
-                ca.decimals::double precision) * '1000000000000000000000000000000000000'::numeric::double precision) AS collateral_value_in_loan_asset,
-            (sp.net_collateral_assets * o.price) ::double precision / (power(10::double precision,
-                ca.decimals::double precision) * '1000000000000000000000000000000000000'::numeric::double precision) * (ma.lltv / '1000000000000000000'::numeric) ::double precision AS max_borrow_in_loan_asset,
-            bp.net_borrow_assets ::double precision / power(10::double precision,
-              la.decimals::double precision) AS borrow_assets_in_loan_asset
-          FROM
-            borrow_positions bp
-          LEFT JOIN supply_collateral_positions sp ON bp.borrower = sp.borrower
-            AND bp.market_id ::text = sp.market_id ::text
-          JOIN create_market ma ON bp.market_id ::text = ma.market_id ::text
-          JOIN asset la ON ma.loan_token = la.id ::text
-          JOIN asset ca ON ma.collateral_token = ca.id ::text
-          JOIN oracle o ON ma.oracle = o.id ::text
-        )
+        CREATE OR REPLACE VIEW positions AS
         SELECT
-          positions.borrower,
-          positions.market_id,
-          positions.net_borrow_assets,
-          positions.net_collateral_assets,
-          positions.loan_asset_symbol,
-          positions.loan_asset_decimals,
-          positions.collateral_asset_symbol,
-          positions.collateral_asset_decimals,
-          positions.liquidation_threshold,
-          positions.oracle_price,
-          positions.collateral_value_in_loan_asset,
-          positions.max_borrow_in_loan_asset,
-          positions.borrow_assets_in_loan_asset,
-          CASE WHEN positions.borrow_assets_in_loan_asset > 0::double precision THEN
-            positions.borrow_assets_in_loan_asset / positions.max_borrow_in_loan_asset
-          ELSE
-            NULL::double precision
-          END AS ltv,
-          CASE WHEN positions.borrow_assets_in_loan_asset > 0::double precision THEN
-            positions.max_borrow_in_loan_asset / positions.borrow_assets_in_loan_asset
-          ELSE
-            NULL::double precision
-          END AS health_factor,
-          CASE WHEN positions.borrow_assets_in_loan_asset > 0::double precision
-            AND(positions.borrow_assets_in_loan_asset / positions.max_borrow_in_loan_asset) > 1::double precision THEN
-            TRUE
-          ELSE
-            FALSE
-          END AS is_liquidatable
+          b.on_behalf AS borrower,
+          b.market_id,
+          b.assets AS borrow_assets,
+          b.shares AS borrow_shares,
+          sc.assets AS collateral_assets,
+          ai.block_timestamp AS last_accrual_timestamp
         FROM
-          positions;
+          borrow b
+          LEFT JOIN supply_collateral sc ON b.on_behalf = sc.on_behalf
+            AND b.market_id = sc.market_id
+          LEFT JOIN accrue_interest ai ON b.market_id = ai.market_id
+        WHERE
+          b.block_timestamp = (
+            SELECT
+              MAX(block_timestamp)
+            FROM
+              borrow
+            WHERE
+              market_id = b.market_id
+              AND on_behalf = b.on_behalf)
+            AND(
+              sc.block_timestamp IS NULL
+              OR sc.block_timestamp = (
+                SELECT
+                  MAX(block_timestamp) FROM supply_collateral
+                WHERE
+                  market_id = sc.market_id
+                  AND on_behalf = sc.on_behalf))
+            AND ai.block_timestamp = (
+              SELECT
+                MAX(block_timestamp)
+              FROM
+                accrue_interest
+              WHERE
+                market_id = ai.market_id
+        );
+    `)
+    await db.query(`
+          CREATE OR REPLACE VIEW aggregated_positions AS
+          SELECT
+              p.*,
+              cm.lltv AS lltv,
+              CASE
+                  WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 THEN
+                      LEAST(
+                          (p.borrow_assets * 1e18::numeric / NULLIF(
+                              mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
+                              0
+                          ))::numeric(78,0),
+                          1e18::numeric(78,0)
+                      )
+                  ELSE
+                      1e18::numeric(78,0)
+              END AS ltv,
+              CASE
+                  WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 AND
+                      (p.borrow_assets * 1e18::numeric / NULLIF(
+                          mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
+                          0
+                      ))::numeric(78,0) < cm.lltv THEN
+                      TRUE
+                  ELSE
+                      FALSE
+              END AS is_liquidatable
+          FROM
+              positions p
+          JOIN create_market cm ON p.market_id = cm.market_id
+          JOIN oracle o ON cm.oracle = o.id;
     `)
   }
 
