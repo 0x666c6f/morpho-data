@@ -228,43 +228,60 @@ module.exports = class LiquidationViews00000000000002 {
     `)
     await db.query(`
         CREATE OR REPLACE VIEW positions AS
-        SELECT
-          b.on_behalf AS borrower,
-          b.market_id,
-          b.assets AS borrow_assets,
-          b.shares AS borrow_shares,
-          sc.assets AS collateral_assets,
-          ai.block_timestamp AS last_accrual_timestamp
-        FROM
-          borrow b
-          LEFT JOIN supply_collateral sc ON b.on_behalf = sc.on_behalf
-            AND b.market_id = sc.market_id
-          LEFT JOIN accrue_interest ai ON b.market_id = ai.market_id
-        WHERE
-          b.block_timestamp = (
-            SELECT
-              MAX(block_timestamp)
-            FROM
-              borrow
-            WHERE
-              market_id = b.market_id
-              AND on_behalf = b.on_behalf)
-            AND(
-              sc.block_timestamp IS NULL
-              OR sc.block_timestamp = (
-                SELECT
-                  MAX(block_timestamp) FROM supply_collateral
-                WHERE
-                  market_id = sc.market_id
-                  AND on_behalf = sc.on_behalf))
-            AND ai.block_timestamp = (
-              SELECT
-                MAX(block_timestamp)
-              FROM
-                accrue_interest
-              WHERE
-                market_id = ai.market_id
-        );
+WITH latest_borrow AS (
+  SELECT DISTINCT ON (on_behalf, market_id)
+    on_behalf, market_id, assets, shares, block_timestamp
+  FROM borrow
+  ORDER BY on_behalf, market_id, block_timestamp DESC
+),
+interest_accruals AS (
+  SELECT
+    market_id,
+    SUM(interest) AS total_interest,
+    MAX(block_timestamp) AS last_accrual_timestamp,
+    MAX(prev_borrow_rate) AS latest_borrow_rate
+  FROM accrue_interest
+  GROUP BY market_id
+)
+SELECT
+  lb.on_behalf AS borrower,
+  lb.market_id,
+  (lb.assets +
+   COALESCE(ia.total_interest, 0) * lb.shares /
+     (SELECT SUM(shares) FROM borrow WHERE market_id = lb.market_id) +
+   w_mul_down(
+     lb.assets + COALESCE(ia.total_interest, 0) * lb.shares /
+       (SELECT SUM(shares) FROM borrow WHERE market_id = lb.market_id),
+     w_taylor_compounded(
+       ia.latest_borrow_rate,
+       EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ia.last_accrual_timestamp))::numeric
+     )
+   ))::numeric(38,0) AS borrow_assets,
+  COALESCE(
+    (SELECT SUM(shares)
+     FROM (
+       SELECT shares FROM borrow WHERE on_behalf = lb.on_behalf AND market_id = lb.market_id
+       UNION ALL
+       SELECT -shares FROM repay WHERE on_behalf = lb.on_behalf AND market_id = lb.market_id
+       UNION ALL
+       SELECT -(repaid_shares + bad_debt_shares) FROM liquidate WHERE borrower = lb.on_behalf AND market_id = lb.market_id
+     ) AS share_changes
+    ),
+    0
+  ) AS borrow_shares,
+  sc.assets AS collateral_assets,
+  ia.last_accrual_timestamp
+FROM
+  latest_borrow lb
+  LEFT JOIN interest_accruals ia ON lb.market_id = ia.market_id
+  LEFT JOIN LATERAL (
+    SELECT assets
+    FROM supply_collateral
+    WHERE on_behalf = lb.on_behalf AND market_id = lb.market_id
+    ORDER BY block_timestamp DESC
+    LIMIT 1
+  ) sc ON TRUE;
+
     `)
     await db.query(`
           CREATE OR REPLACE VIEW aggregated_positions AS
