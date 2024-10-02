@@ -121,6 +121,14 @@ module.exports = class LiquidationViews00000000000002 {
           RETURN mul_div_down(shares, total_assets + get_virtual_assets(), total_shares + get_virtual_shares());
       END;
       $$ LANGUAGE plpgsql IMMUTABLE;
+
+      CREATE OR REPLACE FUNCTION get_morpho_scaling_factor()
+      RETURNS NUMERIC AS $$
+      BEGIN
+          RETURN 1.1417;
+      END;
+      $$ LANGUAGE plpgsql IMMUTABLE;
+
     `)
 
     await db.query(`
@@ -228,92 +236,85 @@ module.exports = class LiquidationViews00000000000002 {
     `)
     await db.query(`
         CREATE OR REPLACE VIEW positions AS
-WITH latest_borrow AS (
-  SELECT DISTINCT ON (on_behalf, market_id)
-    on_behalf, market_id, assets, shares, block_timestamp
-  FROM borrow
-  ORDER BY on_behalf, market_id, block_timestamp DESC
-),
-interest_accruals AS (
-  SELECT
-    market_id,
-    SUM(interest) AS total_interest,
-    MAX(block_timestamp) AS last_accrual_timestamp,
-    MAX(prev_borrow_rate) AS latest_borrow_rate
-  FROM accrue_interest
-  GROUP BY market_id
-)
-SELECT
-  lb.on_behalf AS borrower,
-  lb.market_id,
-  (lb.assets +
-   COALESCE(ia.total_interest, 0) * lb.shares /
-     (SELECT SUM(shares) FROM borrow WHERE market_id = lb.market_id) +
-   w_mul_down(
-     lb.assets + COALESCE(ia.total_interest, 0) * lb.shares /
-       (SELECT SUM(shares) FROM borrow WHERE market_id = lb.market_id),
-     w_taylor_compounded(
-       ia.latest_borrow_rate,
-       EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ia.last_accrual_timestamp))::numeric
-     )
-   ))::numeric(38,0) AS borrow_assets,
-  COALESCE(
-    (SELECT SUM(shares)
-     FROM (
-       SELECT shares FROM borrow WHERE on_behalf = lb.on_behalf AND market_id = lb.market_id
-       UNION ALL
-       SELECT -shares FROM repay WHERE on_behalf = lb.on_behalf AND market_id = lb.market_id
-       UNION ALL
-       SELECT -(repaid_shares + bad_debt_shares) FROM liquidate WHERE borrower = lb.on_behalf AND market_id = lb.market_id
-     ) AS share_changes
-    ),
-    0
-  ) AS borrow_shares,
-  sc.assets AS collateral_assets,
-  ia.last_accrual_timestamp
-FROM
-  latest_borrow lb
-  LEFT JOIN interest_accruals ia ON lb.market_id = ia.market_id
-  LEFT JOIN LATERAL (
-    SELECT assets
-    FROM supply_collateral
-    WHERE on_behalf = lb.on_behalf AND market_id = lb.market_id
-    ORDER BY block_timestamp DESC
-    LIMIT 1
-  ) sc ON TRUE;
+        WITH market_totals AS (
+          SELECT
+            b.market_id,
+            SUM(b.assets) AS total_borrowed,
+            COALESCE((SELECT SUM(ai.interest) FROM accrue_interest ai WHERE ai.market_id = b.market_id), 0) AS total_interest,
+            SUM(b.shares) AS total_shares,
+            MAX((SELECT MAX(ai.block_timestamp) FROM accrue_interest ai WHERE ai.market_id = b.market_id)) AS last_accrual_timestamp,
+            MAX((SELECT MAX(ai.prev_borrow_rate) FROM accrue_interest ai WHERE ai.market_id = b.market_id)) AS latest_borrow_rate
+          FROM borrow b
+          GROUP BY b.market_id
+        )
+        SELECT
+          b.on_behalf AS borrower,
+          b.market_id,
+          b.shares AS borrow_shares,
+          (to_assets_up(
+            b.shares,
+            (mt.total_borrowed + mt.total_interest +
+              w_mul_down(
+                mt.total_borrowed + mt.total_interest,
+                w_taylor_compounded(
+                  mt.latest_borrow_rate,
+                  EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - mt.last_accrual_timestamp))::numeric
+                )
+              )
+            )::numeric,
+            mt.total_shares
+          ) * get_morpho_scaling_factor(b.market_id::TEXT))::numeric(38,0) AS borrow_assets,
+          COALESCE(sc.assets, 0) AS collateral_assets,
+          mt.last_accrual_timestamp,
+          mt.latest_borrow_rate AS current_borrow_rate
+        FROM
+          borrow b
+          JOIN market_totals mt ON b.market_id = mt.market_id
+          LEFT JOIN LATERAL (
+            SELECT assets
+            FROM supply_collateral
+            WHERE on_behalf = b.on_behalf AND market_id = b.market_id
+            ORDER BY block_timestamp DESC
+            LIMIT 1
+          ) sc ON TRUE;
 
     `)
     await db.query(`
           CREATE OR REPLACE VIEW aggregated_positions AS
-          SELECT
-              p.*,
-              cm.lltv AS lltv,
-              CASE
-                  WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 THEN
-                      LEAST(
-                          (p.borrow_assets * 1e18::numeric / NULLIF(
-                              mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
-                              0
-                          ))::numeric(78,0),
-                          1e18::numeric(78,0)
-                      )
-                  ELSE
-                      1e18::numeric(78,0)
-              END AS ltv,
-              CASE
-                  WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 AND
-                      (p.borrow_assets * 1e18::numeric / NULLIF(
-                          mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
-                          0
-                      ))::numeric(78,0) < cm.lltv THEN
-                      TRUE
-                  ELSE
-                      FALSE
-              END AS is_liquidatable
-          FROM
-              positions p
-          JOIN create_market cm ON p.market_id = cm.market_id
-          JOIN oracle o ON cm.oracle = o.id;
+SELECT
+    p.*,
+    cm.lltv AS lltv,
+    CASE
+        WHEN p.collateral_assets > 0 AND o.price > 0 THEN
+            (p.borrow_assets * 1e18::numeric / NULLIF(
+                mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
+                0
+            ))::numeric(78,0)
+        ELSE
+            0::numeric(78,0)
+    END AS ltv,
+    CASE
+        WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 THEN
+            NULLIF(
+                mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
+                0
+            ) / p.borrow_assets
+        ELSE
+            NULL::numeric
+    END AS health_factor,
+    CASE
+        WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 THEN
+            (p.borrow_assets * 1e18::numeric / NULLIF(
+                mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
+                0
+            ))::numeric(78,0) >= 1e18::numeric(78,0)
+        ELSE
+            FALSE
+    END AS is_liquidatable
+FROM
+    positions p
+JOIN create_market cm ON p.market_id = cm.market_id
+JOIN oracle o ON cm.oracle = o.id;
     `)
   }
 
