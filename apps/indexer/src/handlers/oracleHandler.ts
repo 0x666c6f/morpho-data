@@ -31,3 +31,28 @@ export async function upsertOracle(ctx: ProcessorContext<Store>, address: Addres
   }
   return oracle
 }
+
+export async function updateOraclePrice(
+  ctx: ProcessorContext<Store>,
+  oracle: Oracle
+): Promise<bigint | null | undefined> {
+  if (oracle.id === ZERO_ADDRESS) {
+    return 0n
+  }
+  const oracleContract = getContract({
+    address: oracle.id as Address,
+    abi: OracleABI,
+    client: publicClient,
+  })
+  oracle.lastPriceFetchTimestamp = new Date()
+
+  try {
+    const price = await oracleContract.read.price()
+    oracle.price = price as bigint
+  } catch (error) {
+    ctx.log.warn(`Failed to fetch price for oracle ${oracle.id}`)
+  }
+
+  await ctx.store.save(oracle)
+  return oracle.price
+}
