@@ -76,6 +76,16 @@ CREATE INDEX idx_accrue_interest_market_id_interest ON accrue_interest(market_id
 
 CREATE INDEX idx_liquidate_market_id_repaid_seized_assets
 ON liquidate(market_id, repaid_assets, seized_assets);
+
+CREATE INDEX idx_oracle_price ON oracle(price);
+CREATE INDEX idx_borrow_shares ON borrow(shares);
+CREATE INDEX idx_supply_collateral_assets ON supply_collateral(assets);
+CREATE INDEX idx_create_market_lltv ON create_market(lltv);
+
+CREATE INDEX idx_borrow_market_shares ON borrow(market_id, shares);
+CREATE INDEX idx_supply_collateral_market_assets ON supply_collateral(market_id, assets);
+CREATE INDEX idx_borrow_on_behalf_market ON borrow(on_behalf, market_id);
+CREATE INDEX idx_supply_collateral_on_behalf_market ON supply_collateral(on_behalf, market_id);
     `)
     await db.query(`
       -- Constants
