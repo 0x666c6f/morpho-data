@@ -324,6 +324,54 @@ module.exports = class LiquidationViews00000000000002 {
         FROM position_data
         WHERE borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0;
     `)
+
+    await db.query(`
+      CREATE OR REPLACE VIEW all_positions_health AS
+      WITH position_data AS (
+          SELECT
+              p.id AS position_id,
+              p.borrower,
+              p.market_id,
+              p.collateral_amount,
+              p.borrow_amount,
+              p.borrow_shares,
+              m.lltv AS liquidation_threshold,
+              m.collateral_token,
+              m.loan_token,
+              COALESCE(o.price, 0) AS oracle_price
+          FROM positions p
+          JOIN create_market m ON p.market_id = m.market_id
+          LEFT JOIN oracle o ON m.oracle = o.id
+          WHERE p.borrow_shares > 0 -- Only consider positions with active borrows
+      )
+      SELECT
+          position_id,
+          borrower,
+          market_id,
+          collateral_amount,
+          borrow_amount,
+          borrow_shares,
+          liquidation_threshold,
+          collateral_token,
+          loan_token,
+          oracle_price,
+          (collateral_amount * oracle_price / 1e36) :: numeric AS collateral_value_in_loan_token,
+          CASE
+              WHEN borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0 THEN
+                  (liquidation_threshold * collateral_amount * oracle_price / 1e36) :: numeric /
+                  (borrow_amount * 1e18) :: numeric
+              ELSE NULL
+          END AS health_factor,
+          (liquidation_threshold :: numeric / 1e18) AS lltv_decimal,
+          CASE
+              WHEN borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0 THEN
+                  (liquidation_threshold * collateral_amount * oracle_price / 1e36) :: numeric /
+                  (borrow_amount * 1e18) :: numeric < 1
+              ELSE FALSE
+          END AS is_liquidatable
+      FROM position_data
+      WHERE borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0;
+    `)
   }
 
   async down(db) {}
