@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION refresh_position_ltv(p_position_id TEXT)
 RETURNS VOID AS $$
 BEGIN
     -- Refresh the entire view concurrently
-    REFRESH MATERIALIZED VIEW CONCURRENTLY materialized_all_positions_ltv;
+    REFRESH MATERIALIZED VIEW materialized_all_positions_ltv;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION refresh_positions_ltv_for_market(p_market_id TEXT)
 RETURNS VOID AS $$
 BEGIN
     -- Refresh the entire view concurrently
-    REFRESH MATERIALIZED VIEW CONCURRENTLY materialized_all_positions_ltv;
+    REFRESH MATERIALIZED VIEW materialized_all_positions_ltv;
 END;
 $$ LANGUAGE plpgsql;
         `)
@@ -27,7 +27,7 @@ $$ LANGUAGE plpgsql;
             CREATE OR REPLACE FUNCTION refresh_positions_view()
 RETURNS TRIGGER AS $$
 BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY positions;
+    REFRESH MATERIALIZED VIEW positions;
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
