@@ -1,4 +1,4 @@
-- name: default
+- name: raw
   kind: postgres
   configuration:
     connection_info:
@@ -9,4 +9,16 @@
   customization:
     root_fields:
       namespace: raw
-  tables: "!include default/tables/tables.yaml"
+  tables: "!include raw/tables/tables.yaml"
+- name: state
+  kind: postgres
+  configuration:
+    connection_info:
+      database_url:
+        from_env: PG_DATABASE_URL
+      isolation_level: read-committed
+      use_prepared_statements: false
+  customization:
+    root_fields:
+      namespace: state
+  tables: "!include state/tables/tables.yaml"
