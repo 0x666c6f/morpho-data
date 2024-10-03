@@ -1,16 +1,16 @@
 import { Log, ProcessorContext } from "../processor"
 import { events } from "../abi/MorphoBlue"
 import {
-  AccrueInterest,
-  Borrow,
-  CreateMarket,
-  Liquidate,
-  Repay,
-  SetFee,
-  Supply,
-  SupplyCollateral,
-  Withdraw,
-  WithdrawCollateral,
+  MarketAccrueInterest,
+  MarketBorrow,
+  MarketCreateMarket,
+  MarketLiquidate,
+  MarketRepay,
+  MarketSetFee,
+  MarketSupply,
+  MarketSupplyCollateral,
+  MarketWithdraw,
+  MarketWithdrawCollateral,
 } from "../model"
 import { CHAIN_ID } from "../constants"
 import { upsertAsset } from "./assetHandler"
@@ -18,30 +18,30 @@ import { Store } from "@subsquid/typeorm-store"
 import { upsertOracle } from "./oracleHandler"
 
 type EventClass =
-  | typeof AccrueInterest
-  | typeof Borrow
-  | typeof CreateMarket
-  | typeof Liquidate
-  | typeof Repay
-  | typeof SetFee
-  | typeof Supply
-  | typeof SupplyCollateral
-  | typeof Withdraw
-  | typeof WithdrawCollateral
+  | typeof MarketAccrueInterest
+  | typeof MarketBorrow
+  | typeof MarketCreateMarket
+  | typeof MarketLiquidate
+  | typeof MarketRepay
+  | typeof MarketSetFee
+  | typeof MarketSupply
+  | typeof MarketSupplyCollateral
+  | typeof MarketWithdraw
+  | typeof MarketWithdrawCollateral
 
 type EventInstance = InstanceType<EventClass>
 
 const eventMapping: Record<string, { event: any; model: EventClass }> = {
-  [events.AccrueInterest.topic]: { event: events.AccrueInterest, model: AccrueInterest },
-  [events.Borrow.topic]: { event: events.Borrow, model: Borrow },
-  [events.CreateMarket.topic]: { event: events.CreateMarket, model: CreateMarket },
-  [events.Liquidate.topic]: { event: events.Liquidate, model: Liquidate },
-  [events.Repay.topic]: { event: events.Repay, model: Repay },
-  [events.SetFee.topic]: { event: events.SetFee, model: SetFee },
-  [events.Supply.topic]: { event: events.Supply, model: Supply },
-  [events.SupplyCollateral.topic]: { event: events.SupplyCollateral, model: SupplyCollateral },
-  [events.Withdraw.topic]: { event: events.Withdraw, model: Withdraw },
-  [events.WithdrawCollateral.topic]: { event: events.WithdrawCollateral, model: WithdrawCollateral },
+  [events.AccrueInterest.topic]: { event: events.AccrueInterest, model: MarketAccrueInterest },
+  [events.Borrow.topic]: { event: events.Borrow, model: MarketBorrow },
+  [events.CreateMarket.topic]: { event: events.CreateMarket, model: MarketCreateMarket },
+  [events.Liquidate.topic]: { event: events.Liquidate, model: MarketLiquidate },
+  [events.Repay.topic]: { event: events.Repay, model: MarketRepay },
+  [events.SetFee.topic]: { event: events.SetFee, model: MarketSetFee },
+  [events.Supply.topic]: { event: events.Supply, model: MarketSupply },
+  [events.SupplyCollateral.topic]: { event: events.SupplyCollateral, model: MarketSupplyCollateral },
+  [events.Withdraw.topic]: { event: events.Withdraw, model: MarketWithdraw },
+  [events.WithdrawCollateral.topic]: { event: events.WithdrawCollateral, model: MarketWithdrawCollateral },
 }
 
 export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventInstance> {
@@ -62,13 +62,13 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promi
 
   let entityModel: EventInstance
 
-  if (model === CreateMarket) {
+  if (model === MarketCreateMarket) {
     await Promise.all([
       upsertAsset(ctx, decodedEvent.marketParams.loanToken),
       upsertAsset(ctx, decodedEvent.marketParams.collateralToken),
       upsertOracle(ctx, decodedEvent.marketParams.oracle),
     ])
-    entityModel = new CreateMarket({
+    entityModel = new MarketCreateMarket({
       ...baseEventData,
       ...decodedEvent,
       ...decodedEvent.marketParams,

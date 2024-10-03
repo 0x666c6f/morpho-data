@@ -1,8 +1,8 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
-export class Withdraw {
-    constructor(props?: Partial<Withdraw>) {
+export class MarketSupply {
+    constructor(props?: Partial<MarketSupply>) {
         Object.assign(this, props)
     }
 
@@ -17,9 +17,6 @@ export class Withdraw {
 
     @StringColumn_({nullable: false})
     onBehalf!: string
-
-    @StringColumn_({nullable: false})
-    receiver!: string
 
     @BigIntColumn_({nullable: false})
     assets!: bigint

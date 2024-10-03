@@ -1,8 +1,8 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
-export class Liquidate {
-    constructor(props?: Partial<Liquidate>) {
+export class VaultSetCap {
+    constructor(props?: Partial<VaultSetCap>) {
         Object.assign(this, props)
     }
 
@@ -10,28 +10,16 @@ export class Liquidate {
     id!: string
 
     @StringColumn_({nullable: false})
-    marketId!: string
+    vaultId!: string
 
     @StringColumn_({nullable: false})
     caller!: string
 
     @StringColumn_({nullable: false})
-    borrower!: string
+    marketId!: string
 
     @BigIntColumn_({nullable: false})
-    repaidAssets!: bigint
-
-    @BigIntColumn_({nullable: false})
-    repaidShares!: bigint
-
-    @BigIntColumn_({nullable: false})
-    seizedAssets!: bigint
-
-    @BigIntColumn_({nullable: false})
-    badDebtAssets!: bigint
-
-    @BigIntColumn_({nullable: false})
-    badDebtShares!: bigint
+    cap!: bigint
 
     @IntColumn_({nullable: false})
     chain!: number

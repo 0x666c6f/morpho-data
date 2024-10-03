@@ -1,8 +1,8 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
-export class AccrueInterest {
-    constructor(props?: Partial<AccrueInterest>) {
+export class MarketLiquidate {
+    constructor(props?: Partial<MarketLiquidate>) {
         Object.assign(this, props)
     }
 
@@ -12,14 +12,26 @@ export class AccrueInterest {
     @StringColumn_({nullable: false})
     marketId!: string
 
-    @BigIntColumn_({nullable: false})
-    prevBorrowRate!: bigint
+    @StringColumn_({nullable: false})
+    caller!: string
+
+    @StringColumn_({nullable: false})
+    borrower!: string
 
     @BigIntColumn_({nullable: false})
-    interest!: bigint
+    repaidAssets!: bigint
 
     @BigIntColumn_({nullable: false})
-    feeShares!: bigint
+    repaidShares!: bigint
+
+    @BigIntColumn_({nullable: false})
+    seizedAssets!: bigint
+
+    @BigIntColumn_({nullable: false})
+    badDebtAssets!: bigint
+
+    @BigIntColumn_({nullable: false})
+    badDebtShares!: bigint
 
     @IntColumn_({nullable: false})
     chain!: number

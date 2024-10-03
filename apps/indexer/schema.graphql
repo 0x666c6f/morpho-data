@@ -1,15 +1,22 @@
+###############################################################################
+# General entities
+###############################################################################
+
+type Asset @entity {
+  id: ID!
+  symbol: String!
+  decimals: Int!
+}
+
+type Oracle @entity {
+  id: ID!
+  price: BigInt
+  lastPriceFetchTimestamp: DateTime!
+}
+
 type SetOwner @entity {
   id: ID!
   newOwner: String!
-  chain: Int!
-  blockNumber: Int!
-  blockTimestamp: DateTime!
-}
-
-type SetFee @entity {
-  id: ID!
-  marketId: String!
-  newFee: BigInt!
   chain: Int!
   blockNumber: Int!
   blockTimestamp: DateTime!
@@ -39,7 +46,20 @@ type EnableLltv @entity {
   blockTimestamp: DateTime!
 }
 
-type CreateMarket @entity {
+###############################################################################
+# Market entities
+###############################################################################
+
+type MarketSetFee @entity {
+  id: ID!
+  marketId: String!
+  newFee: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type MarketCreateMarket @entity {
   id: ID!
   marketId: String!
   loanToken: String!
@@ -52,7 +72,7 @@ type CreateMarket @entity {
   blockTimestamp: DateTime!
 }
 
-type Supply @entity {
+type MarketSupply @entity {
   id: ID!
   marketId: String!
   caller: String!
@@ -64,7 +84,7 @@ type Supply @entity {
   blockTimestamp: DateTime!
 }
 
-type Withdraw @entity {
+type MarketWithdraw @entity {
   id: ID!
   marketId: String!
   caller: String!
@@ -77,7 +97,7 @@ type Withdraw @entity {
   blockTimestamp: DateTime!
 }
 
-type Borrow @entity {
+type MarketBorrow @entity {
   id: ID!
   marketId: String!
   caller: String!
@@ -90,7 +110,7 @@ type Borrow @entity {
   blockTimestamp: DateTime!
 }
 
-type Repay @entity {
+type MarketRepay @entity {
   id: ID!
   marketId: String!
   caller: String!
@@ -102,7 +122,7 @@ type Repay @entity {
   blockTimestamp: DateTime!
 }
 
-type SupplyCollateral @entity {
+type MarketSupplyCollateral @entity {
   id: ID!
   marketId: String!
   caller: String!
@@ -113,7 +133,7 @@ type SupplyCollateral @entity {
   blockTimestamp: DateTime!
 }
 
-type WithdrawCollateral @entity {
+type MarketWithdrawCollateral @entity {
   id: ID!
   marketId: String!
   caller: String!
@@ -125,7 +145,7 @@ type WithdrawCollateral @entity {
   blockTimestamp: DateTime!
 }
 
-type Liquidate @entity {
+type MarketLiquidate @entity {
   id: ID!
   marketId: String!
   caller: String!
@@ -171,7 +191,7 @@ type IncrementNonce @entity {
   blockTimestamp: DateTime!
 }
 
-type AccrueInterest @entity {
+type MarketAccrueInterest @entity {
   id: ID!
   marketId: String!
   prevBorrowRate: BigInt!
@@ -182,14 +202,250 @@ type AccrueInterest @entity {
   blockTimestamp: DateTime!
 }
 
-type Asset @entity {
+###############################################################################
+# Vault entities
+###############################################################################
+
+type VaultSubmitTimelock @entity {
   id: ID!
-  symbol: String!
-  decimals: Int!
+  vaultId: String!
+  newTimelock: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
 }
 
-type Oracle @entity {
+type VaultSetTimelock @entity {
   id: ID!
-  price: BigInt
-  lastPriceFetchTimestamp: DateTime!
+  vaultId: String!
+  caller: String!
+  newTimelock: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetSkimRecipient @entity {
+  id: ID!
+  vaultId: String!
+  newSkimRecipient: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetFee @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  newFee: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetFeeRecipient @entity {
+  id: ID!
+  vaultId: String!
+  newFeeRecipient: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSubmitGuardian @entity {
+  id: ID!
+  vaultId: String!
+  newGuardian: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetGuardian @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  guardian: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSubmitCap @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  marketId: String!
+  cap: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetCap @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  marketId: String!
+  cap: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultUpdateLastTotalAssets @entity {
+  id: ID!
+  vaultId: String!
+  updatedTotalAssets: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSubmitMarketRemoval @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  marketId: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetCurator @entity {
+  id: ID!
+  vaultId: String!
+  newCurator: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetIsAllocator @entity {
+  id: ID!
+  vaultId: String!
+  allocator: String!
+  isAllocator: Boolean!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultRevokePendingTimelock @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultRevokePendingCap @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  marketId: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultRevokePendingGuardian @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultRevokePendingMarketRemoval @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  marketId: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetSupplyQueue @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  newSupplyQueue: [String!]!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSetWithdrawQueue @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  newWithdrawQueue: [String!]!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultReallocateSupply @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  marketId: String!
+  suppliedAssets: BigInt!
+  suppliedShares: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultReallocateWithdraw @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  marketId: String!
+  withdrawnAssets: BigInt!
+  withdrawnShares: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultAccrueInterest @entity {
+  id: ID!
+  vaultId: String!
+  newTotalAssets: BigInt!
+  feeShares: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultSkim @entity {
+  id: ID!
+  vaultId: String!
+  caller: String!
+  token: String!
+  amount: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultCreateMetaMorpho @entity {
+  id: ID!
+  metaMorpho: String!
+  caller: String!
+  initialOwner: String!
+  initialTimelock: BigInt!
+  asset: String!
+  name: String!
+  symbol: String!
+  salt: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
 }

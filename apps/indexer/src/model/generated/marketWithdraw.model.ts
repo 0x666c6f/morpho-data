@@ -1,8 +1,8 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
-export class CreateMarket {
-    constructor(props?: Partial<CreateMarket>) {
+export class MarketWithdraw {
+    constructor(props?: Partial<MarketWithdraw>) {
         Object.assign(this, props)
     }
 
@@ -13,19 +13,19 @@ export class CreateMarket {
     marketId!: string
 
     @StringColumn_({nullable: false})
-    loanToken!: string
+    caller!: string
 
     @StringColumn_({nullable: false})
-    collateralToken!: string
+    onBehalf!: string
 
     @StringColumn_({nullable: false})
-    oracle!: string
-
-    @StringColumn_({nullable: false})
-    irm!: string
+    receiver!: string
 
     @BigIntColumn_({nullable: false})
-    lltv!: bigint
+    assets!: bigint
+
+    @BigIntColumn_({nullable: false})
+    shares!: bigint
 
     @IntColumn_({nullable: false})
     chain!: number

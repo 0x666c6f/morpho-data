@@ -1,8 +1,8 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
-export class SetFee {
-    constructor(props?: Partial<SetFee>) {
+export class VaultSetTimelock {
+    constructor(props?: Partial<VaultSetTimelock>) {
         Object.assign(this, props)
     }
 
@@ -10,10 +10,13 @@ export class SetFee {
     id!: string
 
     @StringColumn_({nullable: false})
-    marketId!: string
+    vaultId!: string
+
+    @StringColumn_({nullable: false})
+    caller!: string
 
     @BigIntColumn_({nullable: false})
-    newFee!: bigint
+    newTimelock!: bigint
 
     @IntColumn_({nullable: false})
     chain!: number

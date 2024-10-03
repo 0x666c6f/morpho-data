@@ -1,8 +1,8 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
-export class Repay {
-    constructor(props?: Partial<Repay>) {
+export class MarketWithdrawCollateral {
+    constructor(props?: Partial<MarketWithdrawCollateral>) {
         Object.assign(this, props)
     }
 
@@ -18,11 +18,11 @@ export class Repay {
     @StringColumn_({nullable: false})
     onBehalf!: string
 
-    @BigIntColumn_({nullable: false})
-    assets!: bigint
+    @StringColumn_({nullable: false})
+    receiver!: string
 
     @BigIntColumn_({nullable: false})
-    shares!: bigint
+    assets!: bigint
 
     @IntColumn_({nullable: false})
     chain!: number

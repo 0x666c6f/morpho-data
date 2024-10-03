@@ -7,7 +7,11 @@ import {
   Log as _Log,
   Transaction as _Transaction,
 } from "@subsquid/evm-processor"
-import { MORPHO_BLUE_ADDRESS } from "./constants"
+import {
+  CREATE_MORPHO_CHAINLINK_ORACLE_V2_SIGHASH,
+  MORPHO_BLUE_ADDRESS,
+  MORPHO_CHAINLINK_ORACLE_FACTORY_ADDRESS,
+} from "./constants"
 import { events as morphoBlueEvents } from "./abi/MorphoBlue"
 
 export const processor = new EvmBatchProcessor()

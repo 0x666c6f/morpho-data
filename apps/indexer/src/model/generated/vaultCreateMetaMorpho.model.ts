@@ -1,8 +1,8 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, IntColumn as IntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
 
 @Entity_()
-export class WithdrawCollateral {
-    constructor(props?: Partial<WithdrawCollateral>) {
+export class VaultCreateMetaMorpho {
+    constructor(props?: Partial<VaultCreateMetaMorpho>) {
         Object.assign(this, props)
     }
 
@@ -10,19 +10,28 @@ export class WithdrawCollateral {
     id!: string
 
     @StringColumn_({nullable: false})
-    marketId!: string
+    metaMorpho!: string
 
     @StringColumn_({nullable: false})
     caller!: string
 
     @StringColumn_({nullable: false})
-    onBehalf!: string
-
-    @StringColumn_({nullable: false})
-    receiver!: string
+    initialOwner!: string
 
     @BigIntColumn_({nullable: false})
-    assets!: bigint
+    initialTimelock!: bigint
+
+    @StringColumn_({nullable: false})
+    asset!: string
+
+    @StringColumn_({nullable: false})
+    name!: string
+
+    @StringColumn_({nullable: false})
+    symbol!: string
+
+    @StringColumn_({nullable: false})
+    salt!: string
 
     @IntColumn_({nullable: false})
     chain!: number
