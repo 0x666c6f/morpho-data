@@ -7,12 +7,10 @@ import {
   Log as _Log,
   Transaction as _Transaction,
 } from "@subsquid/evm-processor"
-import {
-  METAMORPHO_FACTORY_ADDRESS,
-  MORPHO_BLUE_ADDRESS,
-} from "./constants"
+import { METAMORPHO_FACTORY_ADDRESS, MORPHO_BLUE_ADDRESS } from "./constants"
 import { events as morphoBlueEvents } from "./abi/MorphoBlue"
 import { events as metaMorphoFactoryEvents } from "./abi/MetaMorphoFactory"
+import { events as vaultEvents } from "./abi/MetaMorpho"
 
 export const processor = new EvmBatchProcessor()
   // Lookup archive by the network name in Subsquid registry
@@ -60,6 +58,35 @@ export const processor = new EvmBatchProcessor()
   .addLog({
     address: [METAMORPHO_FACTORY_ADDRESS],
     topic0: [metaMorphoFactoryEvents.CreateMetaMorpho.topic],
+  })
+  .addLog({
+    topic0: [
+      vaultEvents.AccrueInterest.topic,
+      vaultEvents.Deposit.topic,
+      vaultEvents.ReallocateSupply.topic,
+      vaultEvents.ReallocateWithdraw.topic,
+      vaultEvents.RevokePendingCap.topic,
+      vaultEvents.RevokePendingGuardian.topic,
+      vaultEvents.RevokePendingMarketRemoval.topic,
+      vaultEvents.RevokePendingTimelock.topic,
+      vaultEvents.SetCap.topic,
+      vaultEvents.SetCurator.topic,
+      vaultEvents.SetFee.topic,
+      vaultEvents.SetFeeRecipient.topic,
+      vaultEvents.SetGuardian.topic,
+      vaultEvents.SetIsAllocator.topic,
+      vaultEvents.SetSkimRecipient.topic,
+      vaultEvents.SetSupplyQueue.topic,
+      vaultEvents.SetTimelock.topic,
+      vaultEvents.SetWithdrawQueue.topic,
+      vaultEvents.Skim.topic,
+      vaultEvents.SubmitCap.topic,
+      vaultEvents.SubmitGuardian.topic,
+      vaultEvents.SubmitMarketRemoval.topic,
+      vaultEvents.SubmitTimelock.topic,
+      vaultEvents.UpdateLastTotalAssets.topic,
+      vaultEvents.Withdraw.topic,
+    ],
   })
 
 export type Fields = EvmBatchProcessorFields<typeof processor>

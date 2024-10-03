@@ -1,6 +1,7 @@
 import { Log, ProcessorContext } from "../processor"
 import { events as morphoBlueEvents } from "../abi/MorphoBlue"
 import { events as metaMorphoFactoryEvents } from "../abi/MetaMorphoFactory"
+import { events as vaultEvents } from "../abi/MetaMorpho"
 import {
   MarketAccrueInterest,
   MarketBorrow,
@@ -14,6 +15,7 @@ import {
   MarketWithdrawCollateral,
   VaultAccrueInterest,
   VaultCreateMetaMorpho,
+  VaultDeposit,
   VaultReallocateSupply,
   VaultReallocateWithdraw,
   VaultRevokePendingCap,
@@ -36,6 +38,7 @@ import {
   VaultSubmitMarketRemoval,
   VaultSubmitTimelock,
   VaultUpdateLastTotalAssets,
+  VaultWithdraw,
 } from "../model"
 import { CHAIN_ID } from "../constants"
 import { upsertAsset } from "./assetHandler"
@@ -43,47 +46,53 @@ import { Store } from "@subsquid/typeorm-store"
 import { upsertOracle } from "./oracleHandler"
 
 type MorphoBlueEvent =
-  | typeof MarketAccrueInterest
-  | typeof MarketBorrow
-  | typeof MarketCreateMarket
-  | typeof MarketLiquidate
-  | typeof MarketRepay
-  | typeof MarketSetFee
-  | typeof MarketSupply
-  | typeof MarketSupplyCollateral
-  | typeof MarketWithdraw
-  | typeof MarketWithdrawCollateral
+  | MarketAccrueInterest
+  | MarketBorrow
+  | MarketCreateMarket
+  | MarketLiquidate
+  | MarketRepay
+  | MarketSetFee
+  | MarketSupply
+  | MarketSupplyCollateral
+  | MarketWithdraw
+  | MarketWithdrawCollateral
 
-type MetaMorphoFactoryEvent = typeof VaultCreateMetaMorpho
+type MetaMorphoFactoryEvent = VaultCreateMetaMorpho
 
 type VaultEvent =
-  | typeof VaultAccrueInterest
-  | typeof VaultReallocateSupply
-  | typeof VaultReallocateWithdraw
-  | typeof VaultRevokePendingCap
-  | typeof VaultRevokePendingGuardian
-  | typeof VaultRevokePendingMarketRemoval
-  | typeof VaultRevokePendingTimelock
-  | typeof VaultSetCap
-  | typeof VaultSetCurator
-  | typeof VaultSetFee
-  | typeof VaultSetFeeRecipient
-  | typeof VaultSetGuardian
-  | typeof VaultSetIsAllocator
-  | typeof VaultSetTimelock
-  | typeof VaultSetSkimRecipient
-  | typeof VaultSetSupplyQueue
-  | typeof VaultSetWithdrawQueue
-  | typeof VaultSkim
-  | typeof VaultSubmitCap
-  | typeof VaultSubmitGuardian
-  | typeof VaultSubmitMarketRemoval
-  | typeof VaultSubmitTimelock
-  | typeof VaultUpdateLastTotalAssets
+  | VaultAccrueInterest
+  | VaultDeposit
+  | VaultReallocateSupply
+  | VaultReallocateWithdraw
+  | VaultRevokePendingCap
+  | VaultRevokePendingGuardian
+  | VaultRevokePendingMarketRemoval
+  | VaultRevokePendingTimelock
+  | VaultSetCap
+  | VaultSetCurator
+  | VaultSetFee
+  | VaultSetFeeRecipient
+  | VaultSetGuardian
+  | VaultSetIsAllocator
+  | VaultSetTimelock
+  | VaultSetSkimRecipient
+  | VaultSetSupplyQueue
+  | VaultSetWithdrawQueue
+  | VaultSkim
+  | VaultSubmitCap
+  | VaultSubmitGuardian
+  | VaultSubmitMarketRemoval
+  | VaultSubmitTimelock
+  | VaultUpdateLastTotalAssets
+  | VaultWithdraw
 
-type EventInstance = InstanceType<MorphoBlueEvent> | InstanceType<MetaMorphoFactoryEvent> | InstanceType<VaultEvent>
+type EventModel = MorphoBlueEvent | MetaMorphoFactoryEvent | VaultEvent
 
-const eventMapping: Record<string, { event: any; model: MorphoBlueEvent }> = {
+type EventModelConstructor = {
+  new (props: any): EventModel
+}
+
+const eventMapping: Record<string, { event: any; model: EventModelConstructor }> = {
   // MorphoBlue events
   [morphoBlueEvents.AccrueInterest.topic]: { event: morphoBlueEvents.AccrueInterest, model: MarketAccrueInterest },
   [morphoBlueEvents.Borrow.topic]: { event: morphoBlueEvents.Borrow, model: MarketBorrow },
@@ -101,16 +110,62 @@ const eventMapping: Record<string, { event: any; model: MorphoBlueEvent }> = {
     event: morphoBlueEvents.WithdrawCollateral,
     model: MarketWithdrawCollateral,
   },
+
   // MetaMorphoFactory events
+  [metaMorphoFactoryEvents.CreateMetaMorpho.topic]: {
+    event: metaMorphoFactoryEvents.CreateMetaMorpho,
+    model: VaultCreateMetaMorpho,
+  },
+
+  // Vault events
+  [vaultEvents.AccrueInterest.topic]: { event: vaultEvents.AccrueInterest, model: VaultAccrueInterest },
+  [vaultEvents.Deposit.topic]: { event: vaultEvents.Deposit, model: VaultDeposit },
+  [vaultEvents.ReallocateSupply.topic]: { event: vaultEvents.ReallocateSupply, model: VaultReallocateSupply },
+  [vaultEvents.ReallocateWithdraw.topic]: { event: vaultEvents.ReallocateWithdraw, model: VaultReallocateWithdraw },
+  [vaultEvents.RevokePendingCap.topic]: { event: vaultEvents.RevokePendingCap, model: VaultRevokePendingCap },
+  [vaultEvents.RevokePendingGuardian.topic]: {
+    event: vaultEvents.RevokePendingGuardian,
+    model: VaultRevokePendingGuardian,
+  },
+  [vaultEvents.RevokePendingMarketRemoval.topic]: {
+    event: vaultEvents.RevokePendingMarketRemoval,
+    model: VaultRevokePendingMarketRemoval,
+  },
+  [vaultEvents.RevokePendingTimelock.topic]: {
+    event: vaultEvents.RevokePendingTimelock,
+    model: VaultRevokePendingTimelock,
+  },
+  [vaultEvents.SetCap.topic]: { event: vaultEvents.SetCap, model: VaultSetCap },
+  [vaultEvents.SetCurator.topic]: { event: vaultEvents.SetCurator, model: VaultSetCurator },
+  [vaultEvents.SetFee.topic]: { event: vaultEvents.SetFee, model: VaultSetFee },
+  [vaultEvents.SetFeeRecipient.topic]: { event: vaultEvents.SetFeeRecipient, model: VaultSetFeeRecipient },
+  [vaultEvents.SetGuardian.topic]: { event: vaultEvents.SetGuardian, model: VaultSetGuardian },
+  [vaultEvents.SetIsAllocator.topic]: { event: vaultEvents.SetIsAllocator, model: VaultSetIsAllocator },
+  [vaultEvents.SetSkimRecipient.topic]: { event: vaultEvents.SetSkimRecipient, model: VaultSetSkimRecipient },
+  [vaultEvents.SetSupplyQueue.topic]: { event: vaultEvents.SetSupplyQueue, model: VaultSetSupplyQueue },
+  [vaultEvents.SetTimelock.topic]: { event: vaultEvents.SetTimelock, model: VaultSetTimelock },
+  [vaultEvents.SetWithdrawQueue.topic]: { event: vaultEvents.SetWithdrawQueue, model: VaultSetWithdrawQueue },
+  [vaultEvents.Skim.topic]: { event: vaultEvents.Skim, model: VaultSkim },
+  [vaultEvents.SubmitCap.topic]: { event: vaultEvents.SubmitCap, model: VaultSubmitCap },
+  [vaultEvents.SubmitGuardian.topic]: { event: vaultEvents.SubmitGuardian, model: VaultSubmitGuardian },
+  [vaultEvents.SubmitMarketRemoval.topic]: { event: vaultEvents.SubmitMarketRemoval, model: VaultSubmitMarketRemoval },
+  [vaultEvents.SubmitTimelock.topic]: { event: vaultEvents.SubmitTimelock, model: VaultSubmitTimelock },
+  [vaultEvents.UpdateLastTotalAssets.topic]: {
+    event: vaultEvents.UpdateLastTotalAssets,
+    model: VaultUpdateLastTotalAssets,
+  },
+  [vaultEvents.Withdraw.topic]: { event: vaultEvents.Withdraw, model: VaultWithdraw },
 }
 
-export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventInstance> {
+export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventModel> {
   const eventData = eventMapping[log.topics[0]]
   if (!eventData) {
     throw new Error(`Unsupported event topic: ${log.topics[0]}`)
   }
 
   const { event, model } = eventData
+  console.log(model)
+  console.log(log)
   const decodedEvent = event.decode(log)
 
   const baseEventData = {
@@ -120,7 +175,7 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promi
     chain: CHAIN_ID,
   }
 
-  let entityModel: EventInstance
+  let entityModel: EventModel
 
   if (model === MarketCreateMarket) {
     await Promise.all([
@@ -128,7 +183,7 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promi
       upsertAsset(ctx, decodedEvent.marketParams.collateralToken),
       upsertOracle(ctx, decodedEvent.marketParams.oracle),
     ])
-    entityModel = new MarketCreateMarket({
+    entityModel = new model({
       ...baseEventData,
       ...decodedEvent,
       ...decodedEvent.marketParams,
@@ -141,7 +196,8 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promi
   }
 
   entityModel.id = log.id
-  entityModel.marketId = decodedEvent.id
+  ;(entityModel as MorphoBlueEvent).marketId = decodedEvent.id
+  ;(entityModel as VaultEvent).vaultId = log.address
 
   return entityModel
 }

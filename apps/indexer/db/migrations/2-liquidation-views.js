@@ -4,35 +4,35 @@ module.exports = class LiquidationViews00000000000002 {
   async up(db) {
     await db.query(`
       -- Indexes for borrow table
-      CREATE INDEX idx_borrow_on_behalf ON borrow(on_behalf);
-      CREATE INDEX idx_borrow_market_id ON borrow(market_id);
-      CREATE INDEX idx_borrow_on_behalf_market_id ON borrow(on_behalf, market_id);
+      CREATE INDEX idx_borrow_on_behalf ON market_borrow(on_behalf);
+      CREATE INDEX idx_borrow_market_id ON market_borrow(market_id);
+      CREATE INDEX idx_borrow_on_behalf_market_id ON market_borrow(on_behalf, market_id);
 
       -- Indexes for repay table
-      CREATE INDEX idx_repay_on_behalf ON repay(on_behalf);
-      CREATE INDEX idx_repay_market_id ON repay(market_id);
-      CREATE INDEX idx_repay_on_behalf_market_id ON repay(on_behalf, market_id);
+      CREATE INDEX idx_repay_on_behalf ON market_repay(on_behalf);
+      CREATE INDEX idx_repay_market_id ON market_repay(market_id);
+      CREATE INDEX idx_repay_on_behalf_market_id ON market_repay(on_behalf, market_id);
 
-      -- Indexes for liquidate table
-      CREATE INDEX idx_liquidate_borrower ON liquidate(borrower);
-      CREATE INDEX idx_liquidate_market_id ON liquidate(market_id);
-      CREATE INDEX idx_liquidate_borrower_market_id ON liquidate(borrower, market_id);
+      -- Indexes for market_liquidate table
+      CREATE INDEX idx_liquidate_borrower ON market_liquidate(borrower);
+      CREATE INDEX idx_liquidate_market_id ON market_liquidate(market_id);
+      CREATE INDEX idx_liquidate_borrower_market_id ON market_liquidate(borrower, market_id);
 
-      -- Indexes for supply_collateral table
-      CREATE INDEX idx_supply_collateral_on_behalf ON supply_collateral(on_behalf);
-      CREATE INDEX idx_supply_collateral_market_id ON supply_collateral(market_id);
-      CREATE INDEX idx_supply_collateral_on_behalf_market_id ON supply_collateral(on_behalf, market_id);
+      -- Indexes for market_supply_collateral table
+      CREATE INDEX idx_supply_collateral_on_behalf ON market_supply_collateral(on_behalf);
+      CREATE INDEX idx_supply_collateral_market_id ON market_supply_collateral(market_id);
+      CREATE INDEX idx_supply_collateral_on_behalf_market_id ON market_supply_collateral(on_behalf, market_id);
 
-      -- Indexes for withdraw_collateral table
-      CREATE INDEX idx_withdraw_collateral_on_behalf ON withdraw_collateral(on_behalf);
-      CREATE INDEX idx_withdraw_collateral_market_id ON withdraw_collateral(market_id);
-      CREATE INDEX idx_withdraw_collateral_on_behalf_market_id ON withdraw_collateral(on_behalf, market_id);
+      -- Indexes for market_withdraw_collateral table
+      CREATE INDEX idx_withdraw_collateral_on_behalf ON market_withdraw_collateral(on_behalf);
+      CREATE INDEX idx_withdraw_collateral_market_id ON market_withdraw_collateral(market_id);
+      CREATE INDEX idx_withdraw_collateral_on_behalf_market_id ON market_withdraw_collateral(on_behalf, market_id);
 
-      -- Indexes for create_market table
-      CREATE INDEX idx_create_market_market_id ON create_market(market_id);
-      CREATE INDEX idx_create_market_oracle ON create_market(oracle);
-      CREATE INDEX idx_create_market_loan_token ON create_market(loan_token);
-      CREATE INDEX idx_create_market_collateral_token ON create_market(collateral_token);
+      -- Indexes for market_create_market table
+      CREATE INDEX idx_create_market_market_id ON market_create_market(market_id);
+      CREATE INDEX idx_create_market_oracle ON market_create_market(oracle);
+      CREATE INDEX idx_create_market_loan_token ON market_create_market(loan_token);
+      CREATE INDEX idx_create_market_collateral_token ON market_create_market(collateral_token);
 
       -- Indexes for oracle table
       CREATE INDEX idx_oracle_id ON oracle(id);
@@ -40,52 +40,52 @@ module.exports = class LiquidationViews00000000000002 {
       -- Indexes for asset table
       CREATE INDEX idx_asset_id ON asset(id);
 
-      -- Indexes for accrue_interest table
-      CREATE INDEX idx_accrue_interest_market_id ON accrue_interest(market_id);
-      CREATE INDEX idx_accrue_interest_block_timestamp ON accrue_interest(block_timestamp);
-      CREATE INDEX idx_accrue_interest_market_id_block_timestamp ON accrue_interest(market_id, block_timestamp);
+      -- Indexes for market_accrue_interest table
+      CREATE INDEX idx_accrue_interest_market_id ON market_accrue_interest(market_id);
+      CREATE INDEX idx_accrue_interest_block_timestamp ON market_accrue_interest(block_timestamp);
+      CREATE INDEX idx_accrue_interest_market_id_block_timestamp ON market_accrue_interest(market_id, block_timestamp);
 
       -- Additional indexes for timestamp-based queries
-      CREATE INDEX idx_borrow_block_timestamp ON borrow(block_timestamp);
-      CREATE INDEX idx_supply_collateral_block_timestamp ON supply_collateral(block_timestamp);
-      CREATE INDEX idx_repay_block_timestamp ON repay(block_timestamp);
-      CREATE INDEX idx_liquidate_block_timestamp ON liquidate(block_timestamp);
-      CREATE INDEX idx_withdraw_collateral_block_timestamp ON withdraw_collateral(block_timestamp);
+      CREATE INDEX idx_borrow_block_timestamp ON market_borrow(block_timestamp);
+      CREATE INDEX idx_supply_collateral_block_timestamp ON market_supply_collateral(block_timestamp);
+      CREATE INDEX idx_repay_block_timestamp ON market_repay(block_timestamp);
+      CREATE INDEX idx_liquidate_block_timestamp ON market_liquidate(block_timestamp);
+      CREATE INDEX idx_withdraw_collateral_block_timestamp ON market_withdraw_collateral(block_timestamp);
 
-      -- For the borrow table
-      CREATE INDEX idx_borrow_assets ON borrow(assets);
+      -- For the market_borrow table
+      CREATE INDEX idx_borrow_assets ON market_borrow(assets);
 
-      -- For the repay table
-      CREATE INDEX idx_repay_assets ON repay(assets);
+      -- For the market_repay table
+      CREATE INDEX idx_repay_assets ON market_repay(assets);
 
-      -- For the accrue_interest table
-      CREATE INDEX idx_accrue_interest_interest ON accrue_interest(interest);
-      CREATE INDEX idx_accrue_interest_prev_borrow_rate ON accrue_interest(prev_borrow_rate);
+      -- For the market_accrue_interest table
+      CREATE INDEX idx_accrue_interest_interest ON market_accrue_interest(interest);
+      CREATE INDEX idx_accrue_interest_prev_borrow_rate ON market_accrue_interest(prev_borrow_rate);
 
-      -- For the liquidate table
-      CREATE INDEX idx_liquidate_repaid_assets ON liquidate(repaid_assets);
+      -- For the market_liquidate table
+      CREATE INDEX idx_liquidate_repaid_assets ON market_liquidate(repaid_assets);
 
       CREATE INDEX idx_accrue_interest_market_id_prev_borrow_rate
-      ON accrue_interest(market_id, prev_borrow_rate);
+      ON market_accrue_interest(market_id, prev_borrow_rate);
 
-      CREATE INDEX idx_supply_collateral_market_id_assets ON supply_collateral(market_id, assets);
-      CREATE INDEX idx_withdraw_collateral_market_id_assets ON withdraw_collateral(market_id, assets);
-      CREATE INDEX idx_borrow_market_id_assets ON borrow(market_id, assets);
-      CREATE INDEX idx_repay_market_id_assets ON repay(market_id, assets);
-      CREATE INDEX idx_accrue_interest_market_id_interest ON accrue_interest(market_id, interest);
+      CREATE INDEX idx_supply_collateral_market_id_assets ON market_supply_collateral(market_id, assets);
+      CREATE INDEX idx_withdraw_collateral_market_id_assets ON market_withdraw_collateral(market_id, assets);
+      CREATE INDEX idx_borrow_market_id_assets ON market_borrow(market_id, assets);
+      CREATE INDEX idx_repay_market_id_assets ON market_repay(market_id, assets);
+      CREATE INDEX idx_accrue_interest_market_id_interest ON market_accrue_interest(market_id, interest);
 
       CREATE INDEX idx_liquidate_market_id_repaid_seized_assets
-      ON liquidate(market_id, repaid_assets, seized_assets);
+      ON market_liquidate(market_id, repaid_assets, seized_assets);
 
       CREATE INDEX idx_oracle_price ON oracle(price);
-      CREATE INDEX idx_borrow_shares ON borrow(shares);
-      CREATE INDEX idx_supply_collateral_assets ON supply_collateral(assets);
-      CREATE INDEX idx_create_market_lltv ON create_market(lltv);
+      CREATE INDEX idx_borrow_shares ON market_borrow(shares);
+      CREATE INDEX idx_supply_collateral_assets ON market_supply_collateral(assets);
+      CREATE INDEX idx_create_market_lltv ON market_create_market(lltv);
 
-      CREATE INDEX idx_borrow_market_shares ON borrow(market_id, shares);
-      CREATE INDEX idx_supply_collateral_market_assets ON supply_collateral(market_id, assets);
-      CREATE INDEX idx_borrow_on_behalf_market ON borrow(on_behalf, market_id);
-      CREATE INDEX idx_supply_collateral_on_behalf_market ON supply_collateral(on_behalf, market_id);
+      CREATE INDEX idx_borrow_market_shares ON market_borrow(market_id, shares);
+      CREATE INDEX idx_supply_collateral_market_assets ON market_supply_collateral(market_id, assets);
+      CREATE INDEX idx_borrow_on_behalf_market ON market_borrow(on_behalf, market_id);
+      CREATE INDEX idx_supply_collateral_on_behalf_market ON market_supply_collateral(on_behalf, market_id);
     `)
     await db.query(`
       -- Constants
@@ -172,27 +172,27 @@ module.exports = class LiquidationViews00000000000002 {
       CREATE OR REPLACE VIEW market_totals_view AS
       WITH market_data AS (
           SELECT market_id, SUM(assets) AS total_assets, 0 AS total_shares, 'supply_collateral' AS type
-          FROM supply_collateral
+          FROM market_supply_collateral
           GROUP BY market_id
           UNION ALL
           SELECT market_id, -SUM(assets) AS total_assets, 0 AS total_shares, 'withdraw_collateral' AS type
-          FROM withdraw_collateral
+          FROM market_withdraw_collateral
           GROUP BY market_id
           UNION ALL
           SELECT market_id, SUM(assets) AS total_assets, SUM(shares) AS total_shares, 'borrow' AS type
-          FROM borrow
+          FROM market_borrow
           GROUP BY market_id
           UNION ALL
           SELECT market_id, -SUM(assets) AS total_assets, -SUM(shares) AS total_shares, 'repay' AS type
-          FROM repay
+          FROM market_repay
           GROUP BY market_id
           UNION ALL
           SELECT market_id, SUM(interest) AS total_assets, 0 AS total_shares, 'accrue_interest' AS type
-          FROM accrue_interest
+          FROM market_accrue_interest
           GROUP BY market_id
           UNION ALL
           SELECT market_id, -SUM(repaid_assets) AS total_assets, -SUM(repaid_shares + bad_debt_shares) AS total_shares, 'liquidation' AS type
-          FROM liquidate
+          FROM market_liquidate
           GROUP BY market_id
       )
       SELECT
@@ -221,7 +221,7 @@ module.exports = class LiquidationViews00000000000002 {
           -- Borrow events
           SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
                 SUM(shares) AS borrow_shares, SUM(assets) AS borrow_amount, 0 AS collateral_amount
-          FROM borrow
+          FROM market_borrow
           GROUP BY market_id, on_behalf
 
           UNION ALL
@@ -229,7 +229,7 @@ module.exports = class LiquidationViews00000000000002 {
           -- Repay events
           SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
                 -SUM(shares) AS borrow_shares, -SUM(assets) AS borrow_amount, 0 AS collateral_amount
-          FROM repay
+          FROM market_repay
           GROUP BY market_id, on_behalf
 
           UNION ALL
@@ -239,7 +239,7 @@ module.exports = class LiquidationViews00000000000002 {
                 -SUM(repaid_shares + bad_debt_shares) AS borrow_shares,
                 -SUM(repaid_assets) AS borrow_amount,
                 -SUM(seized_assets) AS collateral_amount
-          FROM liquidate
+          FROM market_liquidate
           GROUP BY market_id, borrower
 
           UNION ALL
@@ -247,7 +247,7 @@ module.exports = class LiquidationViews00000000000002 {
           -- Supply Collateral events
           SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
                 0 AS borrow_shares, 0 AS borrow_amount, SUM(assets) AS collateral_amount
-          FROM supply_collateral
+          FROM market_supply_collateral
           GROUP BY market_id, on_behalf
 
           UNION ALL
@@ -255,7 +255,7 @@ module.exports = class LiquidationViews00000000000002 {
           -- Withdraw Collateral events
           SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
                 0 AS borrow_shares, 0 AS borrow_amount, -SUM(assets) AS collateral_amount
-          FROM withdraw_collateral
+          FROM market_withdraw_collateral
           GROUP BY market_id, on_behalf
       )
       SELECT
@@ -293,7 +293,7 @@ module.exports = class LiquidationViews00000000000002 {
                 m.loan_token,
                 COALESCE(o.price, 0) AS oracle_price
             FROM positions p
-            JOIN create_market m ON p.market_id = m.market_id
+            JOIN market_create_market m ON p.market_id = m.market_id
             LEFT JOIN oracle o ON m.oracle = o.id
             WHERE p.borrow_shares > 0  -- Only consider positions with active borrows
         )
@@ -340,7 +340,7 @@ module.exports = class LiquidationViews00000000000002 {
               m.loan_token,
               COALESCE(o.price, 0) AS oracle_price
           FROM positions p
-          JOIN create_market m ON p.market_id = m.market_id
+          JOIN market_create_market m ON p.market_id = m.market_id
           LEFT JOIN oracle o ON m.oracle = o.id
           WHERE p.borrow_shares > 0 -- Only consider positions with active borrows
       )
@@ -382,12 +382,12 @@ module.exports = class LiquidationViews00000000000002 {
       ),
       latest_accrue_interest AS (
           SELECT DISTINCT ON (market_id) market_id, prev_borrow_rate, block_timestamp
-          FROM accrue_interest
+          FROM market_accrue_interest
           ORDER BY market_id, block_timestamp DESC
       ),
       latest_set_fee AS (
           SELECT DISTINCT ON (market_id) market_id, new_fee
-          FROM set_fee
+          FROM market_set_fee
           ORDER BY market_id, block_timestamp DESC
       )
       SELECT
@@ -421,7 +421,7 @@ module.exports = class LiquidationViews00000000000002 {
           COALESCE(sf.new_fee, 0)::float / POWER(10, 18)::float AS fee,
           COALESCE(lai.block_timestamp, m.block_timestamp) AS timestamp
       FROM
-          create_market m
+          market_create_market m
       LEFT JOIN current_market_borrow_state cmbs ON m.market_id = cmbs.market_id
       LEFT JOIN market_totals_view mtv ON m.market_id = mtv.market_id
       LEFT JOIN latest_oracle_prices lop ON m.oracle = lop.oracle_id

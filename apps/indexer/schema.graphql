@@ -449,3 +449,28 @@ type VaultCreateMetaMorpho @entity {
   blockNumber: Int!
   blockTimestamp: DateTime!
 }
+
+type VaultDeposit @entity {
+  id: ID!
+  vaultId: String!
+  sender: String!
+  owner: String!
+  assets: BigInt!
+  shares: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type VaultWithdraw @entity {
+  id: ID!
+  vaultId: String!
+  sender: String!
+  receiver: String!
+  owner: String!
+  assets: BigInt!
+  shares: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
