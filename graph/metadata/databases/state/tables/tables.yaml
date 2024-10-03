@@ -1,3 +1,4 @@
+- "!include public_all_positions_health.yaml"
 - "!include public_all_positions_ltv.yaml"
 - "!include public_current_market_borrow_state.yaml"
 - "!include public_market_totals_view.yaml"
