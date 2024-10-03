@@ -6,6 +6,7 @@ import {
   CreateMarket,
   Liquidate,
   Repay,
+  SetFee,
   Supply,
   SupplyCollateral,
   Withdraw,
@@ -22,6 +23,7 @@ type EventClass =
   | typeof CreateMarket
   | typeof Liquidate
   | typeof Repay
+  | typeof SetFee
   | typeof Supply
   | typeof SupplyCollateral
   | typeof Withdraw
@@ -35,6 +37,7 @@ const eventMapping: Record<string, { event: any; model: EventClass }> = {
   [events.CreateMarket.topic]: { event: events.CreateMarket, model: CreateMarket },
   [events.Liquidate.topic]: { event: events.Liquidate, model: Liquidate },
   [events.Repay.topic]: { event: events.Repay, model: Repay },
+  [events.SetFee.topic]: { event: events.SetFee, model: SetFee },
   [events.Supply.topic]: { event: events.Supply, model: Supply },
   [events.SupplyCollateral.topic]: { event: events.SupplyCollateral, model: SupplyCollateral },
   [events.Withdraw.topic]: { event: events.Withdraw, model: Withdraw },

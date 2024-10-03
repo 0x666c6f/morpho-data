@@ -372,6 +372,64 @@ module.exports = class LiquidationViews00000000000002 {
       FROM position_data
       WHERE borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0;
     `)
+
+    await db.query(`
+      CREATE OR REPLACE VIEW market_state_view AS
+      WITH latest_oracle_prices AS (
+          SELECT DISTINCT ON (id) id AS oracle_id, price, last_price_fetch_timestamp
+          FROM oracle
+          ORDER BY id, last_price_fetch_timestamp DESC
+      ),
+      latest_accrue_interest AS (
+          SELECT DISTINCT ON (market_id) market_id, prev_borrow_rate, block_timestamp
+          FROM accrue_interest
+          ORDER BY market_id, block_timestamp DESC
+      ),
+      latest_set_fee AS (
+          SELECT DISTINCT ON (market_id) market_id, new_fee
+          FROM set_fee
+          ORDER BY market_id, block_timestamp DESC
+      )
+      SELECT
+          m.market_id,
+          COALESCE(cmbs.current_borrow_assets_with_interest, 0) AS borrow_assets,
+          COALESCE(cmbs.current_borrow_assets_with_interest, 0) + COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0) AS supply_assets,
+          (COALESCE(cmbs.current_borrow_assets_with_interest, 0) * COALESCE(lop.price, 0) / POWER(10, COALESCE(a_loan.decimals, 18))) / POWER(10, 36) AS borrow_assets_usd,
+          ((COALESCE(cmbs.current_borrow_assets_with_interest, 0) + COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0)) * COALESCE(lop.price, 0) / POWER(10, COALESCE(a_loan.decimals, 18))) / POWER(10, 36) AS supply_assets_usd,
+          COALESCE(cmbs.current_borrow_shares, 0) AS borrow_shares,
+          COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0) - COALESCE(cmbs.current_borrow_assets_with_interest, 0) AS supply_shares,
+          COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0) - COALESCE(cmbs.current_borrow_assets_with_interest, 0) AS liquidity_assets,
+          ((COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0) - COALESCE(cmbs.current_borrow_assets_with_interest, 0)) * COALESCE(lop.price, 0) / POWER(10, COALESCE(a_loan.decimals, 18))) / POWER(10, 36) AS liquidity_assets_usd,
+          COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0) AS collateral_assets,
+          ((COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0)) * COALESCE(lop.price, 0) / POWER(10, COALESCE(a_coll.decimals, 18))) / POWER(10, 36) AS collateral_assets_usd,
+          CASE
+              WHEN COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0) > 0
+              THEN COALESCE(cmbs.current_borrow_assets_with_interest, 0)::float / (COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0))::float
+              ELSE 0
+          END AS utilization,
+          COALESCE(lai.prev_borrow_rate, 0)::float / POWER(10, 18)::float AS rate_at_u_target,
+          COALESCE(EXP(lai.prev_borrow_rate::float / POWER(10, 18)::float * 31536000) - 1, 0) AS borrow_apy,
+          COALESCE(EXP(lai.prev_borrow_rate::float / POWER(10, 18)::float * 31536000) - 1, 0) *
+          (CASE
+              WHEN COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0) > 0
+              THEN COALESCE(cmbs.current_borrow_assets_with_interest, 0)::float / (COALESCE(mtv.supply_collateral_total, 0) - COALESCE(mtv.withdraw_collateral_total, 0))::float
+              ELSE 0
+          END) *
+          (1 - COALESCE(sf.new_fee, 0)::float / POWER(10, 18)::float) AS supply_apy,
+          NULL AS net_supply_apy,
+          NULL AS net_borrow_apy,
+          COALESCE(sf.new_fee, 0)::float / POWER(10, 18)::float AS fee,
+          COALESCE(lai.block_timestamp, m.block_timestamp) AS timestamp
+      FROM
+          create_market m
+      LEFT JOIN current_market_borrow_state cmbs ON m.market_id = cmbs.market_id
+      LEFT JOIN market_totals_view mtv ON m.market_id = mtv.market_id
+      LEFT JOIN latest_oracle_prices lop ON m.oracle = lop.oracle_id
+      LEFT JOIN latest_accrue_interest lai ON m.market_id = lai.market_id
+      LEFT JOIN asset a_loan ON m.loan_token = a_loan.id
+      LEFT JOIN asset a_coll ON m.collateral_token = a_coll.id
+      LEFT JOIN latest_set_fee sf ON m.market_id = sf.market_id;
+`)
   }
 
   async down(db) {}

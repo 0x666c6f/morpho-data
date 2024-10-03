@@ -1,0 +1,3 @@
+table:
+  name: market_state_view
+  schema: public

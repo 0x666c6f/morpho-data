@@ -47,6 +47,7 @@ export const processor = new EvmBatchProcessor()
       morphoBlueEvents.Liquidate.topic,
       morphoBlueEvents.Repay.topic,
       morphoBlueEvents.Withdraw.topic,
+      morphoBlueEvents.SetFee.topic,
       morphoBlueEvents.Supply.topic,
       morphoBlueEvents.SupplyCollateral.topic,
       morphoBlueEvents.WithdrawCollateral.topic,
