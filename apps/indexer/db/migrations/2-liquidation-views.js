@@ -268,6 +268,53 @@ LEFT JOIN current_market_borrow_state cmbs ON pe.market_id = cmbs.market_id
 GROUP BY pe.id, pe.market_id, pe.borrower, cmbs.current_borrow_assets_with_interest, cmbs.current_borrow_shares
 HAVING GREATEST(SUM(pe.borrow_shares), 0) > 0 OR GREATEST(SUM(pe.collateral_amount), 0) > 0;
       `)
+
+    await db.query(`
+        CREATE OR REPLACE VIEW all_positions_ltv AS
+WITH position_data AS (
+    SELECT
+        p.id AS position_id,
+        p.borrower,
+        p.market_id,
+        p.collateral_amount,
+        p.borrow_amount,
+        p.borrow_shares,
+        m.lltv AS liquidation_threshold,
+        m.collateral_token,
+        m.loan_token,
+        COALESCE(o.price, 0) AS oracle_price
+    FROM positions p
+    JOIN create_market m ON p.market_id = m.market_id
+    LEFT JOIN oracle o ON m.oracle = o.id
+    WHERE p.borrow_shares > 0  -- Only consider positions with active borrows
+)
+SELECT
+    position_id,
+    borrower,
+    market_id,
+    collateral_amount,
+    borrow_amount,
+    borrow_shares,
+    liquidation_threshold,
+    collateral_token,
+    loan_token,
+    oracle_price,
+    (borrow_amount * 1e18) :: numeric AS scaled_borrow_amount,
+    (collateral_amount * oracle_price / 1e18) :: numeric AS collateral_value_in_loan_token,
+    CASE
+        WHEN collateral_amount > 0 AND oracle_price > 0 THEN
+            (borrow_amount * 1e36) :: numeric / NULLIF((collateral_amount * oracle_price) :: numeric, 0)
+        ELSE NULL
+    END AS current_ltv,
+    (liquidation_threshold :: numeric / 1e18) AS lltv_decimal,
+    CASE
+        WHEN collateral_amount > 0 AND oracle_price > 0 AND liquidation_threshold > 0 THEN
+            ((borrow_amount * 1e36) :: numeric / NULLIF((collateral_amount * oracle_price) :: numeric, 0)) > (liquidation_threshold :: numeric / 1e18)
+        ELSE FALSE
+    END AS is_liquidatable
+FROM position_data
+WHERE borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0;
+`)
   }
 
   async down(db) {}
