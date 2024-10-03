@@ -1,5 +1,6 @@
 import { Log, ProcessorContext } from "../processor"
-import { events } from "../abi/MorphoBlue"
+import { events as morphoBlueEvents } from "../abi/MorphoBlue"
+import { events as metaMorphoFactoryEvents } from "../abi/MetaMorphoFactory"
 import {
   MarketAccrueInterest,
   MarketBorrow,
@@ -11,13 +12,37 @@ import {
   MarketSupplyCollateral,
   MarketWithdraw,
   MarketWithdrawCollateral,
+  VaultAccrueInterest,
+  VaultCreateMetaMorpho,
+  VaultReallocateSupply,
+  VaultReallocateWithdraw,
+  VaultRevokePendingCap,
+  VaultRevokePendingGuardian,
+  VaultRevokePendingMarketRemoval,
+  VaultRevokePendingTimelock,
+  VaultSetCap,
+  VaultSetCurator,
+  VaultSetFee,
+  VaultSetFeeRecipient,
+  VaultSetGuardian,
+  VaultSetIsAllocator,
+  VaultSetSkimRecipient,
+  VaultSetSupplyQueue,
+  VaultSetTimelock,
+  VaultSetWithdrawQueue,
+  VaultSkim,
+  VaultSubmitCap,
+  VaultSubmitGuardian,
+  VaultSubmitMarketRemoval,
+  VaultSubmitTimelock,
+  VaultUpdateLastTotalAssets,
 } from "../model"
 import { CHAIN_ID } from "../constants"
 import { upsertAsset } from "./assetHandler"
 import { Store } from "@subsquid/typeorm-store"
 import { upsertOracle } from "./oracleHandler"
 
-type EventClass =
+type MorphoBlueEvent =
   | typeof MarketAccrueInterest
   | typeof MarketBorrow
   | typeof MarketCreateMarket
@@ -29,19 +54,54 @@ type EventClass =
   | typeof MarketWithdraw
   | typeof MarketWithdrawCollateral
 
-type EventInstance = InstanceType<EventClass>
+type MetaMorphoFactoryEvent = typeof VaultCreateMetaMorpho
 
-const eventMapping: Record<string, { event: any; model: EventClass }> = {
-  [events.AccrueInterest.topic]: { event: events.AccrueInterest, model: MarketAccrueInterest },
-  [events.Borrow.topic]: { event: events.Borrow, model: MarketBorrow },
-  [events.CreateMarket.topic]: { event: events.CreateMarket, model: MarketCreateMarket },
-  [events.Liquidate.topic]: { event: events.Liquidate, model: MarketLiquidate },
-  [events.Repay.topic]: { event: events.Repay, model: MarketRepay },
-  [events.SetFee.topic]: { event: events.SetFee, model: MarketSetFee },
-  [events.Supply.topic]: { event: events.Supply, model: MarketSupply },
-  [events.SupplyCollateral.topic]: { event: events.SupplyCollateral, model: MarketSupplyCollateral },
-  [events.Withdraw.topic]: { event: events.Withdraw, model: MarketWithdraw },
-  [events.WithdrawCollateral.topic]: { event: events.WithdrawCollateral, model: MarketWithdrawCollateral },
+type VaultEvent =
+  | typeof VaultAccrueInterest
+  | typeof VaultReallocateSupply
+  | typeof VaultReallocateWithdraw
+  | typeof VaultRevokePendingCap
+  | typeof VaultRevokePendingGuardian
+  | typeof VaultRevokePendingMarketRemoval
+  | typeof VaultRevokePendingTimelock
+  | typeof VaultSetCap
+  | typeof VaultSetCurator
+  | typeof VaultSetFee
+  | typeof VaultSetFeeRecipient
+  | typeof VaultSetGuardian
+  | typeof VaultSetIsAllocator
+  | typeof VaultSetTimelock
+  | typeof VaultSetSkimRecipient
+  | typeof VaultSetSupplyQueue
+  | typeof VaultSetWithdrawQueue
+  | typeof VaultSkim
+  | typeof VaultSubmitCap
+  | typeof VaultSubmitGuardian
+  | typeof VaultSubmitMarketRemoval
+  | typeof VaultSubmitTimelock
+  | typeof VaultUpdateLastTotalAssets
+
+type EventInstance = InstanceType<MorphoBlueEvent> | InstanceType<MetaMorphoFactoryEvent> | InstanceType<VaultEvent>
+
+const eventMapping: Record<string, { event: any; model: MorphoBlueEvent }> = {
+  // MorphoBlue events
+  [morphoBlueEvents.AccrueInterest.topic]: { event: morphoBlueEvents.AccrueInterest, model: MarketAccrueInterest },
+  [morphoBlueEvents.Borrow.topic]: { event: morphoBlueEvents.Borrow, model: MarketBorrow },
+  [morphoBlueEvents.CreateMarket.topic]: { event: morphoBlueEvents.CreateMarket, model: MarketCreateMarket },
+  [morphoBlueEvents.Liquidate.topic]: { event: morphoBlueEvents.Liquidate, model: MarketLiquidate },
+  [morphoBlueEvents.Repay.topic]: { event: morphoBlueEvents.Repay, model: MarketRepay },
+  [morphoBlueEvents.SetFee.topic]: { event: morphoBlueEvents.SetFee, model: MarketSetFee },
+  [morphoBlueEvents.Supply.topic]: { event: morphoBlueEvents.Supply, model: MarketSupply },
+  [morphoBlueEvents.SupplyCollateral.topic]: {
+    event: morphoBlueEvents.SupplyCollateral,
+    model: MarketSupplyCollateral,
+  },
+  [morphoBlueEvents.Withdraw.topic]: { event: morphoBlueEvents.Withdraw, model: MarketWithdraw },
+  [morphoBlueEvents.WithdrawCollateral.topic]: {
+    event: morphoBlueEvents.WithdrawCollateral,
+    model: MarketWithdrawCollateral,
+  },
+  // MetaMorphoFactory events
 }
 
 export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventInstance> {

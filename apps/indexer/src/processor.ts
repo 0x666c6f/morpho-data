@@ -8,11 +8,11 @@ import {
   Transaction as _Transaction,
 } from "@subsquid/evm-processor"
 import {
-  CREATE_MORPHO_CHAINLINK_ORACLE_V2_SIGHASH,
+  METAMORPHO_FACTORY_ADDRESS,
   MORPHO_BLUE_ADDRESS,
-  MORPHO_CHAINLINK_ORACLE_FACTORY_ADDRESS,
 } from "./constants"
 import { events as morphoBlueEvents } from "./abi/MorphoBlue"
+import { events as metaMorphoFactoryEvents } from "./abi/MetaMorphoFactory"
 
 export const processor = new EvmBatchProcessor()
   // Lookup archive by the network name in Subsquid registry
@@ -56,6 +56,10 @@ export const processor = new EvmBatchProcessor()
       morphoBlueEvents.SupplyCollateral.topic,
       morphoBlueEvents.WithdrawCollateral.topic,
     ],
+  })
+  .addLog({
+    address: [METAMORPHO_FACTORY_ADDRESS],
+    topic0: [metaMorphoFactoryEvents.CreateMetaMorpho.topic],
   })
 
 export type Fields = EvmBatchProcessorFields<typeof processor>
