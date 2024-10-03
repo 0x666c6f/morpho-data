@@ -51,6 +51,31 @@ module.exports = class LiquidationViews00000000000002 {
       CREATE INDEX idx_repay_block_timestamp ON repay(block_timestamp);
       CREATE INDEX idx_liquidate_block_timestamp ON liquidate(block_timestamp);
       CREATE INDEX idx_withdraw_collateral_block_timestamp ON withdraw_collateral(block_timestamp);
+
+      -- For the borrow table
+      CREATE INDEX idx_borrow_assets ON borrow(assets);
+
+      -- For the repay table
+      CREATE INDEX idx_repay_assets ON repay(assets);
+
+      -- For the accrue_interest table
+      CREATE INDEX idx_accrue_interest_interest ON accrue_interest(interest);
+      CREATE INDEX idx_accrue_interest_prev_borrow_rate ON accrue_interest(prev_borrow_rate);
+
+      -- For the liquidate table
+      CREATE INDEX idx_liquidate_repaid_assets ON liquidate(repaid_assets);
+
+      CREATE INDEX idx_accrue_interest_market_id_prev_borrow_rate
+ON accrue_interest(market_id, prev_borrow_rate);
+
+CREATE INDEX idx_supply_collateral_market_id_assets ON supply_collateral(market_id, assets);
+CREATE INDEX idx_withdraw_collateral_market_id_assets ON withdraw_collateral(market_id, assets);
+CREATE INDEX idx_borrow_market_id_assets ON borrow(market_id, assets);
+CREATE INDEX idx_repay_market_id_assets ON repay(market_id, assets);
+CREATE INDEX idx_accrue_interest_market_id_interest ON accrue_interest(market_id, interest);
+
+CREATE INDEX idx_liquidate_market_id_repaid_seized_assets
+ON liquidate(market_id, repaid_assets, seized_assets);
     `)
     await db.query(`
       -- Constants
@@ -110,13 +135,15 @@ module.exports = class LiquidationViews00000000000002 {
       END;
       $$ LANGUAGE plpgsql IMMUTABLE;
 
-      CREATE OR REPLACE FUNCTION to_assets_up(shares numeric, total_assets numeric, total_shares numeric) RETURNS numeric AS $$
+      CREATE OR REPLACE FUNCTION to_assets_up(shares numeric, total_assets numeric, total_shares numeric)
+      RETURNS numeric AS $$
       BEGIN
           RETURN mul_div_up(shares, total_assets + get_virtual_assets(), total_shares + get_virtual_shares());
       END;
       $$ LANGUAGE plpgsql IMMUTABLE;
 
-      CREATE OR REPLACE FUNCTION to_assets_down(shares numeric, total_assets numeric, total_shares numeric) RETURNS numeric AS $$
+      CREATE OR REPLACE FUNCTION to_assets_down(shares numeric, total_assets numeric, total_shares numeric)
+      RETURNS numeric AS $$
       BEGIN
           RETURN mul_div_down(shares, total_assets + get_virtual_assets(), total_shares + get_virtual_shares());
       END;
@@ -131,191 +158,116 @@ module.exports = class LiquidationViews00000000000002 {
 
     `)
 
+    // market totals
     await db.query(`
-      CREATE OR REPLACE VIEW borrow_positions AS
-      SELECT
-        borrower,
-        market_id,
-        SUM(
-          borrowed_shares) - SUM(
-          repaid_shares) - SUM(
-          liquidated_shares) AS net_borrow_shares,
-        SUM(
-          borrowed_assets) - SUM(
-          repaid_assets) - SUM(
-          liquidated_assets) AS net_borrow_assets
-      FROM (
-        SELECT
-          be.on_behalf AS borrower,
-          be.market_id,
-          be.shares AS borrowed_shares,
-          be.assets AS borrowed_assets,
-          0 AS repaid_shares,
-          0 AS repaid_assets,
-          0 AS liquidated_shares,
-          0 AS liquidated_assets
-        FROM
-          borrow be
-        UNION ALL
-        SELECT
-          re.on_behalf AS borrower,
-          re.id,
-          0 AS borrowed_shares,
-          0 AS borrowed_assets,
-          re.shares AS repaid_shares,
-          re.assets AS repaid_assets,
-          0 AS liquidated_shares,
-          0 AS liquidated_assets
-        FROM
-          repay re
-        UNION ALL
-        SELECT
-          le.borrower,
-          le.market_id,
-          0 AS borrowed_shares,
-          0 AS borrowed_assets,
-          0 AS repaid_shares,
-          0 AS repaid_assets,
-          (le.repaid_shares + le.bad_debt_shares) AS liquidated_shares,
-          le.repaid_assets AS liquidated_assets
-        FROM
-          liquidate le) AS events
-      GROUP BY
-        borrower,
-        market_id
-      HAVING
-        SUM(
-          borrowed_shares) - SUM(
-          repaid_shares) - SUM(
-          liquidated_shares) > 0;
-    `)
-    await db.query(`
-      CREATE VIEW supply_collateral_positions AS
-      SELECT
-        borrower,
-        market_id,
-        SUM(
-          supplied_assets) - SUM(
-          withdrawn_assets) - SUM(
-          seized_assets) AS net_collateral_assets
-      FROM (
-        SELECT
-          sce.on_behalf AS borrower,
-          sce.market_id,
-          sce.assets AS supplied_assets,
-          0 AS withdrawn_assets,
-          0 AS seized_assets
-        FROM
-          supply_collateral sce
-        UNION ALL
-        SELECT
-          wce.on_behalf,
-          wce.market_id,
-          0 AS supplied_assets,
-          wce.assets AS withdrawn_assets,
-          0 AS seized_assets
-        FROM
-          withdraw_collateral wce
-        UNION ALL
-        SELECT
-          le.borrower,
-          le.market_id,
-          0 AS supplied_assets,
-          0 AS withdrawn_assets,
-          le.seized_assets AS seized_assets
-        FROM
-          liquidate le) AS events
-      GROUP BY
-        borrower,
-        market_id
-      HAVING
-        SUM(
-          supplied_assets) - SUM(
-          withdrawn_assets) - SUM(
-          seized_assets) > 0;
-    `)
-    await db.query(`
-        CREATE OR REPLACE VIEW positions AS
-        WITH market_totals AS (
-          SELECT
-            b.market_id,
-            SUM(b.assets) AS total_borrowed,
-            COALESCE((SELECT SUM(ai.interest) FROM accrue_interest ai WHERE ai.market_id = b.market_id), 0) AS total_interest,
-            SUM(b.shares) AS total_shares,
-            MAX((SELECT MAX(ai.block_timestamp) FROM accrue_interest ai WHERE ai.market_id = b.market_id)) AS last_accrual_timestamp,
-            MAX((SELECT MAX(ai.prev_borrow_rate) FROM accrue_interest ai WHERE ai.market_id = b.market_id)) AS latest_borrow_rate
-          FROM borrow b
-          GROUP BY b.market_id
-        )
-        SELECT
-          b.on_behalf AS borrower,
-          b.market_id,
-          b.shares AS borrow_shares,
-          (to_assets_up(
-            b.shares,
-            (mt.total_borrowed + mt.total_interest +
-              w_mul_down(
-                mt.total_borrowed + mt.total_interest,
-                w_taylor_compounded(
-                  mt.latest_borrow_rate,
-                  EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - mt.last_accrual_timestamp))::numeric
-                )
-              )
-            )::numeric,
-            mt.total_shares
-          ) * get_morpho_scaling_factor(b.market_id::TEXT))::numeric(38,0) AS borrow_assets,
-          COALESCE(sc.assets, 0) AS collateral_assets,
-          mt.last_accrual_timestamp,
-          mt.latest_borrow_rate AS current_borrow_rate
-        FROM
-          borrow b
-          JOIN market_totals mt ON b.market_id = mt.market_id
-          LEFT JOIN LATERAL (
-            SELECT assets
-            FROM supply_collateral
-            WHERE on_behalf = b.on_behalf AND market_id = b.market_id
-            ORDER BY block_timestamp DESC
-            LIMIT 1
-          ) sc ON TRUE;
-
-    `)
-    await db.query(`
-          CREATE OR REPLACE VIEW aggregated_positions AS
+      CREATE OR REPLACE VIEW market_totals_view AS
+WITH market_data AS (
+    SELECT market_id, SUM(assets) AS total_assets, 0 AS total_shares, 'supply_collateral' AS type
+    FROM supply_collateral
+    GROUP BY market_id
+    UNION ALL
+    SELECT market_id, -SUM(assets) AS total_assets, 0 AS total_shares, 'withdraw_collateral' AS type
+    FROM withdraw_collateral
+    GROUP BY market_id
+    UNION ALL
+    SELECT market_id, SUM(assets) AS total_assets, SUM(shares) AS total_shares, 'borrow' AS type
+    FROM borrow
+    GROUP BY market_id
+    UNION ALL
+    SELECT market_id, -SUM(assets) AS total_assets, -SUM(shares) AS total_shares, 'repay' AS type
+    FROM repay
+    GROUP BY market_id
+    UNION ALL
+    SELECT market_id, SUM(interest) AS total_assets, 0 AS total_shares, 'accrue_interest' AS type
+    FROM accrue_interest
+    GROUP BY market_id
+    UNION ALL
+    SELECT market_id, -SUM(repaid_assets) AS total_assets, -SUM(repaid_shares + bad_debt_shares) AS total_shares, 'liquidation' AS type
+    FROM liquidate
+    GROUP BY market_id
+)
 SELECT
-    p.*,
-    cm.lltv AS lltv,
-    CASE
-        WHEN p.collateral_assets > 0 AND o.price > 0 THEN
-            (p.borrow_assets * 1e18::numeric / NULLIF(
-                mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
-                0
-            ))::numeric(78,0)
-        ELSE
-            0::numeric(78,0)
-    END AS ltv,
-    CASE
-        WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 THEN
-            NULLIF(
-                mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
-                0
-            ) / p.borrow_assets
-        ELSE
-            NULL::numeric
-    END AS health_factor,
-    CASE
-        WHEN p.collateral_assets > 0 AND o.price > 0 AND cm.lltv > 0 THEN
-            (p.borrow_assets * 1e18::numeric / NULLIF(
-                mul_div_down(p.collateral_assets, o.price, '1000000000000000000000000000000000000'::numeric) * cm.lltv / 1e18,
-                0
-            ))::numeric(78,0) >= 1e18::numeric(78,0)
-        ELSE
-            FALSE
-    END AS is_liquidatable
-FROM
-    positions p
-JOIN create_market cm ON p.market_id = cm.market_id
-JOIN oracle o ON cm.oracle = o.id;
+    market_id,
+    SUM(CASE WHEN type = 'supply_collateral' THEN GREATEST(total_assets, 0) ELSE 0 END) AS supply_collateral_total,
+    SUM(CASE WHEN type = 'withdraw_collateral' THEN GREATEST(-total_assets, 0) ELSE 0 END) AS withdraw_collateral_total,
+    SUM(CASE WHEN type = 'borrow' THEN GREATEST(total_assets, 0) ELSE 0 END) AS borrow_total,
+    SUM(CASE WHEN type = 'repay' THEN GREATEST(-total_assets, 0) ELSE 0 END) AS repay_total,
+    SUM(CASE WHEN type = 'accrue_interest' THEN GREATEST(total_assets, 0) ELSE 0 END) AS accrue_interest_total,
+    SUM(CASE WHEN type = 'liquidation' THEN GREATEST(-total_assets, 0) ELSE 0 END) AS liquidation_total,
+    SUM(CASE WHEN type IN ('borrow', 'repay', 'liquidation') THEN total_shares ELSE 0 END) AS borrow_shares_total
+FROM market_data
+GROUP BY market_id;
+
+CREATE OR REPLACE VIEW current_market_borrow_state AS
+SELECT
+    market_id,
+    borrow_shares_total AS current_borrow_shares,
+    borrow_total - repay_total - liquidation_total + accrue_interest_total AS current_borrow_assets_with_interest
+FROM market_totals_view;
     `)
+
+    await db.query(`
+      CREATE OR REPLACE VIEW positions AS
+WITH position_events AS (
+    -- Borrow events
+    SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
+           SUM(shares) AS borrow_shares, SUM(assets) AS borrow_amount, 0 AS collateral_amount
+    FROM borrow
+    GROUP BY market_id, on_behalf
+
+    UNION ALL
+
+    -- Repay events
+    SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
+           -SUM(shares) AS borrow_shares, -SUM(assets) AS borrow_amount, 0 AS collateral_amount
+    FROM repay
+    GROUP BY market_id, on_behalf
+
+    UNION ALL
+
+    -- Liquidation events (for borrower)
+    SELECT market_id || ':' || borrower AS id, market_id, borrower,
+           -SUM(repaid_shares + bad_debt_shares) AS borrow_shares,
+           -SUM(repaid_assets) AS borrow_amount,
+           -SUM(seized_assets) AS collateral_amount
+    FROM liquidate
+    GROUP BY market_id, borrower
+
+    UNION ALL
+
+    -- Supply Collateral events
+    SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
+           0 AS borrow_shares, 0 AS borrow_amount, SUM(assets) AS collateral_amount
+    FROM supply_collateral
+    GROUP BY market_id, on_behalf
+
+    UNION ALL
+
+    -- Withdraw Collateral events
+    SELECT market_id || ':' || on_behalf AS id, market_id, on_behalf AS borrower,
+           0 AS borrow_shares, 0 AS borrow_amount, -SUM(assets) AS collateral_amount
+    FROM withdraw_collateral
+    GROUP BY market_id, on_behalf
+)
+SELECT
+    pe.id,
+    pe.market_id,
+    pe.borrower,
+    GREATEST(SUM(pe.borrow_shares), 0) AS borrow_shares,
+    CASE
+        WHEN GREATEST(SUM(pe.borrow_shares), 0) > 0 THEN
+            GREATEST(
+                (GREATEST(SUM(pe.borrow_shares), 0) * cmbs.current_borrow_assets_with_interest) / cmbs.current_borrow_shares,
+                GREATEST(SUM(pe.borrow_amount), 0)
+            )
+        ELSE 0
+    END AS borrow_amount,
+    GREATEST(SUM(pe.collateral_amount), 0) AS collateral_amount
+FROM position_events pe
+LEFT JOIN current_market_borrow_state cmbs ON pe.market_id = cmbs.market_id
+GROUP BY pe.id, pe.market_id, pe.borrower, cmbs.current_borrow_assets_with_interest, cmbs.current_borrow_shares
+HAVING GREATEST(SUM(pe.borrow_shares), 0) > 0 OR GREATEST(SUM(pe.collateral_amount), 0) > 0;
+      `)
   }
 
   async down(db) {}
