@@ -1,3 +1,18 @@
 table:
   name: accrue_interest
   schema: public
+select_permissions:
+  - role: public
+    permission:
+      columns:
+        - id
+        - block_number
+        - chain
+        - fee_shares
+        - interest
+        - prev_borrow_rate
+        - market_id
+        - block_timestamp
+      filter: {}
+      limit: 100
+    comment: ""

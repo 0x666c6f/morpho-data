@@ -1,3 +1,22 @@
 table:
   name: liquidate
   schema: public
+select_permissions:
+  - role: public
+    permission:
+      columns:
+        - id
+        - block_number
+        - chain
+        - bad_debt_assets
+        - bad_debt_shares
+        - repaid_assets
+        - repaid_shares
+        - seized_assets
+        - borrower
+        - caller
+        - market_id
+        - block_timestamp
+      filter: {}
+      limit: 100
+    comment: ""

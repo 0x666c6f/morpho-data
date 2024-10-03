@@ -1,3 +1,19 @@
 table:
   name: withdraw_collateral
   schema: public
+select_permissions:
+  - role: public
+    permission:
+      columns:
+        - id
+        - block_number
+        - chain
+        - assets
+        - caller
+        - market_id
+        - on_behalf
+        - receiver
+        - block_timestamp
+      filter: {}
+      limit: 100
+    comment: ""

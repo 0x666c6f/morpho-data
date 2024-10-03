@@ -1,0 +1,25 @@
+table:
+  name: all_positions_ltv
+  schema: public
+select_permissions:
+  - role: public
+    permission:
+      columns:
+        - is_liquidatable
+        - borrow_amount
+        - borrow_shares
+        - collateral_amount
+        - collateral_value_in_loan_token
+        - current_ltv
+        - liquidation_threshold
+        - lltv_decimal
+        - oracle_price
+        - scaled_borrow_amount
+        - borrower
+        - collateral_token
+        - loan_token
+        - market_id
+        - position_id
+      filter: {}
+      limit: 100
+    comment: ""

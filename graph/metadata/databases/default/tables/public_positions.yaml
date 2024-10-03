@@ -1,18 +1,16 @@
 table:
-  name: supply_collateral
+  name: positions
   schema: public
 select_permissions:
   - role: public
     permission:
       columns:
+        - borrow_amount
+        - borrow_shares
+        - collateral_amount
+        - borrower
         - id
-        - block_number
-        - chain
-        - assets
-        - caller
         - market_id
-        - on_behalf
-        - block_timestamp
       filter: {}
       limit: 100
     comment: ""

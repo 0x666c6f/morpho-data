@@ -1,0 +1,18 @@
+table:
+  name: market_totals_view
+  schema: public
+select_permissions:
+  - role: public
+    permission:
+      columns:
+        - accrue_interest_total
+        - borrow_shares_total
+        - borrow_total
+        - liquidation_total
+        - repay_total
+        - supply_collateral_total
+        - withdraw_collateral_total
+        - market_id
+      filter: {}
+      limit: 100
+    comment: ""
