@@ -10,3 +10,13 @@ services:
       - "${DB_PORT}:5432"
       # command: ["postgres", "-c", "log_statement=all"]
     shm_size: 1gb
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - cache:/data
+volumes:
+  redis:
+    driver: local

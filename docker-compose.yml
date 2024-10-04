@@ -38,3 +38,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  redis:
+    image: redis
+    restart: always
+    environment:
+      - REDIS_PASSWORD=redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis:/data
+volumes:
+  redis:
+    driver: local

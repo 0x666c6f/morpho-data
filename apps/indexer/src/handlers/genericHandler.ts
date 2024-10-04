@@ -44,6 +44,8 @@ import { CHAIN_ID } from "../constants"
 import { upsertAsset } from "./assetHandler"
 import { Store } from "@subsquid/typeorm-store"
 import { upsertOracle } from "./oracleHandler"
+import { vaults } from "../main"
+import { getRedis, VAULTS_KEY } from "../services/redis"
 
 type MorphoBlueEvent =
   | MarketAccrueInterest
@@ -157,7 +159,7 @@ const eventMapping: Record<string, { event: any; model: EventModelConstructor }>
   [vaultEvents.Withdraw.topic]: { event: vaultEvents.Withdraw, model: VaultWithdraw },
 }
 
-export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventModel | undefined> {
+export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventModel> {
   const eventData = eventMapping[log.topics[0]]
   if (!eventData) {
     throw new Error(`Unsupported event topic: ${log.topics[0]}`)
@@ -165,14 +167,14 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promi
 
   const { event, model } = eventData
 
-  const indexedVaults = await ctx.store.find(VaultCreateMetaMorpho)
-  if (
-    (model === VaultDeposit || model == VaultWithdraw) &&
-    !indexedVaults.map(vault => vault.metaMorpho).includes(log.address)
-  ) {
-    return
-  }
   const decodedEvent = event.decode(log)
+
+  if (model === VaultCreateMetaMorpho && !vaults.has(decodedEvent.metaMorpho)) {
+    ctx.log.info(`Caching new vault ${decodedEvent.metaMorpho}`)
+    const redis = getRedis()
+    await redis.sAdd(VAULTS_KEY, decodedEvent.metaMorpho)
+    throw new Error("VaultCreateMetaMorpho created, restarting process")
+  }
 
   const baseEventData = {
     blockNumber: log.block.height,

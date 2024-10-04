@@ -64,35 +64,6 @@ export const processor = new EvmBatchProcessor()
     address: [METAMORPHO_FACTORY_ADDRESS],
     topic0: [metaMorphoFactoryEvents.CreateMetaMorpho.topic],
   })
-  .addLog({
-    topic0: [
-      vaultEvents.AccrueInterest.topic,
-      vaultEvents.Deposit.topic,
-      vaultEvents.ReallocateSupply.topic,
-      vaultEvents.ReallocateWithdraw.topic,
-      vaultEvents.RevokePendingCap.topic,
-      vaultEvents.RevokePendingGuardian.topic,
-      vaultEvents.RevokePendingMarketRemoval.topic,
-      vaultEvents.RevokePendingTimelock.topic,
-      vaultEvents.SetCap.topic,
-      vaultEvents.SetCurator.topic,
-      vaultEvents.SetFee.topic,
-      vaultEvents.SetFeeRecipient.topic,
-      vaultEvents.SetGuardian.topic,
-      vaultEvents.SetIsAllocator.topic,
-      vaultEvents.SetSkimRecipient.topic,
-      vaultEvents.SetSupplyQueue.topic,
-      vaultEvents.SetTimelock.topic,
-      vaultEvents.SetWithdrawQueue.topic,
-      vaultEvents.Skim.topic,
-      vaultEvents.SubmitCap.topic,
-      vaultEvents.SubmitGuardian.topic,
-      vaultEvents.SubmitMarketRemoval.topic,
-      vaultEvents.SubmitTimelock.topic,
-      vaultEvents.UpdateLastTotalAssets.topic,
-      vaultEvents.Withdraw.topic,
-    ],
-  })
 
 export type Fields = EvmBatchProcessorFields<typeof processor>
 export type Block = BlockHeader<Fields>
