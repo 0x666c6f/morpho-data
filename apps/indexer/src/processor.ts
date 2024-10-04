@@ -28,6 +28,11 @@ export const processor = new EvmBatchProcessor()
   })
   .setFinalityConfirmation(100)
   .setFields({
+    log: {
+      transactionHash: true,
+      topics: true,
+      data: true,
+    },
     transaction: {
       from: true,
       value: true,

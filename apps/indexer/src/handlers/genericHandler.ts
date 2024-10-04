@@ -157,15 +157,21 @@ const eventMapping: Record<string, { event: any; model: EventModelConstructor }>
   [vaultEvents.Withdraw.topic]: { event: vaultEvents.Withdraw, model: VaultWithdraw },
 }
 
-export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventModel> {
+export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventModel | undefined> {
   const eventData = eventMapping[log.topics[0]]
   if (!eventData) {
     throw new Error(`Unsupported event topic: ${log.topics[0]}`)
   }
 
   const { event, model } = eventData
-  console.log(model)
-  console.log(log)
+
+  const indexedVaults = await ctx.store.find(VaultCreateMetaMorpho)
+  if (
+    (model === VaultDeposit || model == VaultWithdraw) &&
+    !indexedVaults.map(vault => vault.metaMorpho).includes(log.address)
+  ) {
+    return
+  }
   const decodedEvent = event.decode(log)
 
   const baseEventData = {
