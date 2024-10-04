@@ -7,6 +7,7 @@ const client = createClient({
 })
 
 export const VAULTS_KEY = `${CHAIN_ID}-VAULTS`
+export const VAULTS_PRELOADED_HEIGHT_KEY = `${CHAIN_ID}-VAULTS-PRELOADED-HEIGHT`
 
 export function getRedis() {
   if (!client.isReady) {

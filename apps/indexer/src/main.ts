@@ -1,12 +1,13 @@
 import { TypeormDatabase } from "@subsquid/typeorm-store"
 import { DataSource } from "typeorm"
-import { processor } from "./processor"
+import { processor, VAULT_TOPICS } from "./processor"
 import { handleEvent } from "./handlers/genericHandler"
 import { Oracle, VaultCreateMetaMorpho } from "./model"
 import { updateOraclePrice } from "./handlers/oracleHandler"
 import { events as vaultEvents } from "./abi/MetaMorpho"
 import { SnakeNamingStrategy } from "typeorm-naming-strategies"
-import { getRedis, VAULTS_KEY } from "./services/redis"
+import { getRedis, VAULTS_KEY, VAULTS_PRELOADED_HEIGHT_KEY } from "./services/redis"
+import { assertNotNull } from "@subsquid/evm-processor"
 
 export const vaults = new Set<string>()
 function start() {
@@ -17,9 +18,11 @@ function start() {
         ctx.log.info(`Processing block ${c.header.height}`)
         for (const log of c.logs) {
           const entity = await handleEvent(ctx, log)
-          await ctx.store.upsert(entity)
-          ctx.log.info(`New event ${entity.constructor.name}`)
-          ctx.log.info(entity)
+          if (entity) {
+            await ctx.store.upsert(entity)
+            ctx.log.info(`New event ${entity.constructor.name}`)
+            ctx.log.info(entity)
+          }
         }
 
         // Update oracle prices every 100 blocks, once indexer is synced
@@ -43,35 +46,25 @@ async function setupProcessor() {
   for (const vault of cachedVaults) {
     vaults.add(vault)
   }
+  const preloadHeight = await redis.get(VAULTS_PRELOADED_HEIGHT_KEY)
+  const preloadedData = preloadHeight && cachedVaults.length > 0
+  if (preloadedData) {
+    processor.addLog({
+      address: Array.from(vaults),
+      range: {
+        from: Number(assertNotNull(process.env.START_BLOCK, "No start block supplied")),
+        to: Number(preloadHeight),
+      },
+      topic0: VAULT_TOPICS,
+    })
+  }
   processor.addLog({
-    address: Array.from(vaults),
-    topic0: [
-      vaultEvents.AccrueInterest.topic,
-      vaultEvents.Deposit.topic,
-      vaultEvents.ReallocateSupply.topic,
-      vaultEvents.ReallocateWithdraw.topic,
-      vaultEvents.RevokePendingCap.topic,
-      vaultEvents.RevokePendingGuardian.topic,
-      vaultEvents.RevokePendingMarketRemoval.topic,
-      vaultEvents.RevokePendingTimelock.topic,
-      vaultEvents.SetCap.topic,
-      vaultEvents.SetCurator.topic,
-      vaultEvents.SetFee.topic,
-      vaultEvents.SetFeeRecipient.topic,
-      vaultEvents.SetGuardian.topic,
-      vaultEvents.SetIsAllocator.topic,
-      vaultEvents.SetSkimRecipient.topic,
-      vaultEvents.SetSupplyQueue.topic,
-      vaultEvents.SetTimelock.topic,
-      vaultEvents.SetWithdrawQueue.topic,
-      vaultEvents.Skim.topic,
-      vaultEvents.SubmitCap.topic,
-      vaultEvents.SubmitGuardian.topic,
-      vaultEvents.SubmitMarketRemoval.topic,
-      vaultEvents.SubmitTimelock.topic,
-      vaultEvents.UpdateLastTotalAssets.topic,
-      vaultEvents.Withdraw.topic,
-    ],
+    range: preloadedData
+      ? {
+          from: Number(preloadHeight) + 1,
+        }
+      : undefined,
+    topic0: VAULT_TOPICS,
   })
 }
 

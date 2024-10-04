@@ -2,8 +2,7 @@
   "name": "squid-evm-template",
   "private": true,
   "scripts": {
-    "build": "rm -rf lib && tsc",
-    "dev": "pm2 start start.sh --name sqd --no-daemon"
+    "build": "rm -rf lib && tsc"
   },
   "dependencies": {
     "@subsquid/evm-abi": "0.3.0",

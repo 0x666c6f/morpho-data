@@ -9,6 +9,8 @@ services:
     ports:
       - "5432:5432"
       # command: ["postgres", "-c", "log_statement=all"]
+    volumes:
+      - postgres:/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -44,9 +46,11 @@ services:
     environment:
       - REDIS_PASSWORD=redis
     ports:
-      - '6379:6379'
+      - "6379:6379"
     volumes:
       - redis:/data
 volumes:
   redis:
+    driver: local
+  postgres:
     driver: local

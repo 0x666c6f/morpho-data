@@ -12,6 +12,34 @@ import { events as morphoBlueEvents } from "./abi/MorphoBlue"
 import { events as metaMorphoFactoryEvents } from "./abi/MetaMorphoFactory"
 import { events as vaultEvents } from "./abi/MetaMorpho"
 
+export const VAULT_TOPICS = [
+  vaultEvents.AccrueInterest.topic,
+  vaultEvents.Deposit.topic,
+  vaultEvents.ReallocateSupply.topic,
+  vaultEvents.ReallocateWithdraw.topic,
+  vaultEvents.RevokePendingCap.topic,
+  vaultEvents.RevokePendingGuardian.topic,
+  vaultEvents.RevokePendingMarketRemoval.topic,
+  vaultEvents.RevokePendingTimelock.topic,
+  vaultEvents.SetCap.topic,
+  vaultEvents.SetCurator.topic,
+  vaultEvents.SetFee.topic,
+  vaultEvents.SetFeeRecipient.topic,
+  vaultEvents.SetGuardian.topic,
+  vaultEvents.SetIsAllocator.topic,
+  vaultEvents.SetSkimRecipient.topic,
+  vaultEvents.SetSupplyQueue.topic,
+  vaultEvents.SetTimelock.topic,
+  vaultEvents.SetWithdrawQueue.topic,
+  vaultEvents.Skim.topic,
+  vaultEvents.SubmitCap.topic,
+  vaultEvents.SubmitGuardian.topic,
+  vaultEvents.SubmitMarketRemoval.topic,
+  vaultEvents.SubmitTimelock.topic,
+  vaultEvents.UpdateLastTotalAssets.topic,
+  vaultEvents.Withdraw.topic,
+]
+
 export const processor = new EvmBatchProcessor()
   // Lookup archive by the network name in Subsquid registry
   // See https://docs.subsquid.io/evm-indexing/supported-networks/
