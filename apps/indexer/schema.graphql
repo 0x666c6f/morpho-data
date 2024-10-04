@@ -474,3 +474,82 @@ type VaultWithdraw @entity {
   blockNumber: Int!
   blockTimestamp: DateTime!
 }
+
+###############################################################################
+# AdaptativeCurveIRM entities
+###############################################################################
+type AdaptativeCurveIRMBorrowRateUpdate @entity {
+  id: ID!
+  marketId: String!
+  avgBorrowRate: BigInt!
+  rateAtTarget: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+###############################################################################
+# PublicAllocator entities
+###############################################################################
+type PublicAllocatorPublicWithdrawal @entity {
+  id: ID!
+  sender: String!
+  vaultId: String!
+  marketId: String!
+  withdrawnAssets: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type PublicAllocatorPublicReallocateTo @entity {
+  id: ID!
+  sender: String!
+  vaultId: String!
+  supplyMarketId: String!
+  suppliedAssets: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type PublicAllocatorSetAdmin @entity {
+  id: ID!
+  sender: String!
+  vaultId: String!
+  admin: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type PublicAllocatorSetFee @entity {
+  id: ID!
+  sender: String!
+  vaultId: String!
+  fee: BigInt!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type PublicAllocatorTransferFee @entity {
+  id: ID!
+  sender: String!
+  vaultId: String!
+  amount: BigInt!
+  feeRecipient: String!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}
+
+type PublicAllocatorSetFlowCaps @entity {
+  id: ID!
+  sender: String!
+  vaultId: String!
+  config: JSON!
+  chain: Int!
+  blockNumber: Int!
+  blockTimestamp: DateTime!
+}

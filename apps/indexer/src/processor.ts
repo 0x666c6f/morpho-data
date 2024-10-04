@@ -1,16 +1,23 @@
 import { assertNotNull } from "@subsquid/util-internal"
 import {
-  BlockHeader,
-  DataHandlerContext,
+  type BlockHeader,
+  type DataHandlerContext,
   EvmBatchProcessor,
-  EvmBatchProcessorFields,
-  Log as _Log,
-  Transaction as _Transaction,
+  type EvmBatchProcessorFields,
+  type Log as _Log,
+  type Transaction as _Transaction,
 } from "@subsquid/evm-processor"
-import { METAMORPHO_FACTORY_ADDRESS, MORPHO_BLUE_ADDRESS } from "./constants"
+import {
+  METAMORPHO_FACTORY_ADDRESS,
+  MORPHO_ADAPTATIVE_CURVE_IRM_ADDRESS,
+  MORPHO_BLUE_ADDRESS,
+  MORPHO_PUBLIC_ALLOCATOR_ADDRESS,
+} from "./constants"
 import { events as morphoBlueEvents } from "./abi/MorphoBlue"
 import { events as metaMorphoFactoryEvents } from "./abi/MetaMorphoFactory"
 import { events as vaultEvents } from "./abi/MetaMorpho"
+import { events as adaptativeCurveIRMEvents } from "./abi/AdaptativeCurveIRM"
+import { events as publicAllocatorEvents } from "./abi/MorphoPublicAllocator"
 
 export const VAULT_TOPICS = [
   vaultEvents.AccrueInterest.topic,
@@ -91,6 +98,21 @@ export const processor = new EvmBatchProcessor()
   .addLog({
     address: [METAMORPHO_FACTORY_ADDRESS],
     topic0: [metaMorphoFactoryEvents.CreateMetaMorpho.topic],
+  })
+  .addLog({
+    address: [MORPHO_PUBLIC_ALLOCATOR_ADDRESS],
+    topic0: [
+      publicAllocatorEvents.PublicReallocateTo.topic,
+      publicAllocatorEvents.PublicWithdrawal.topic,
+      publicAllocatorEvents.SetAdmin.topic,
+      publicAllocatorEvents.SetFee.topic,
+      publicAllocatorEvents.SetFlowCaps.topic,
+      publicAllocatorEvents.TransferFee.topic,
+    ],
+  })
+  .addLog({
+    address: [MORPHO_ADAPTATIVE_CURVE_IRM_ADDRESS],
+    topic0: [adaptativeCurveIRMEvents.BorrowRateUpdate.topic],
   })
 
 export type Fields = EvmBatchProcessorFields<typeof processor>

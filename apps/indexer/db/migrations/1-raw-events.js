@@ -47,6 +47,13 @@ module.exports = class RawEvents00000000000001 {
         await db.query(`CREATE TABLE "vault_create_meta_morpho" ("id" character varying NOT NULL, "meta_morpho" text NOT NULL, "caller" text NOT NULL, "initial_owner" text NOT NULL, "initial_timelock" numeric NOT NULL, "asset" text NOT NULL, "name" text NOT NULL, "symbol" text NOT NULL, "salt" text NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_ed2f49fdee1deb9d61808bfc479" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "vault_deposit" ("id" character varying NOT NULL, "vault_id" text NOT NULL, "sender" text NOT NULL, "owner" text NOT NULL, "assets" numeric NOT NULL, "shares" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_eb436a184ae6cfb4f8f1ae05994" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "vault_withdraw" ("id" character varying NOT NULL, "vault_id" text NOT NULL, "sender" text NOT NULL, "receiver" text NOT NULL, "owner" text NOT NULL, "assets" numeric NOT NULL, "shares" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_f8d7ebfdeec87a5da3fe62ecda1" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "adaptative_curve_irm_borrow_rate_update" ("id" character varying NOT NULL, "market_id" text NOT NULL, "avg_borrow_rate" numeric NOT NULL, "rate_at_target" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_756f994cf201dc1e9cd35e990f8" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "public_allocator_public_withdrawal" ("id" character varying NOT NULL, "sender" text NOT NULL, "vault_id" text NOT NULL, "market_id" text NOT NULL, "withdrawn_assets" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_bae652fd07bfbb850aa5e5b4678" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "public_allocator_public_reallocate_to" ("id" character varying NOT NULL, "sender" text NOT NULL, "vault_id" text NOT NULL, "supply_market_id" text NOT NULL, "supplied_assets" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_991bc7e4859ab0db0eb46ee8b64" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "public_allocator_set_admin" ("id" character varying NOT NULL, "sender" text NOT NULL, "vault_id" text NOT NULL, "admin" text NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_800a116697b631aa7028d3d49ed" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "public_allocator_set_fee" ("id" character varying NOT NULL, "sender" text NOT NULL, "vault_id" text NOT NULL, "fee" numeric NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_08f09ee3f6cae8aef4fffef07db" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "public_allocator_transfer_fee" ("id" character varying NOT NULL, "sender" text NOT NULL, "vault_id" text NOT NULL, "amount" numeric NOT NULL, "fee_recipient" text NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_8d862552e0cea7965489fee6122" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "public_allocator_set_flow_caps" ("id" character varying NOT NULL, "sender" text NOT NULL, "vault_id" text NOT NULL, "config" jsonb NOT NULL, "chain" integer NOT NULL, "block_number" integer NOT NULL, "block_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_42f3fa3aca783514c7374a83e4a" PRIMARY KEY ("id"))`)
     }
 
     async down(db) {
@@ -95,5 +102,12 @@ module.exports = class RawEvents00000000000001 {
         await db.query(`DROP TABLE "vault_create_meta_morpho"`)
         await db.query(`DROP TABLE "vault_deposit"`)
         await db.query(`DROP TABLE "vault_withdraw"`)
+        await db.query(`DROP TABLE "adaptative_curve_irm_borrow_rate_update"`)
+        await db.query(`DROP TABLE "public_allocator_public_withdrawal"`)
+        await db.query(`DROP TABLE "public_allocator_public_reallocate_to"`)
+        await db.query(`DROP TABLE "public_allocator_set_admin"`)
+        await db.query(`DROP TABLE "public_allocator_set_fee"`)
+        await db.query(`DROP TABLE "public_allocator_transfer_fee"`)
+        await db.query(`DROP TABLE "public_allocator_set_flow_caps"`)
     }
 }

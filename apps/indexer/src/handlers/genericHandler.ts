@@ -1,8 +1,12 @@
-import { Log, ProcessorContext } from "../processor"
+import type { Log, ProcessorContext } from "../processor"
 import { events as morphoBlueEvents } from "../abi/MorphoBlue"
 import { events as metaMorphoFactoryEvents } from "../abi/MetaMorphoFactory"
 import { events as vaultEvents } from "../abi/MetaMorpho"
+import { events as adaptativeCurveIRMEvents } from "../abi/AdaptativeCurveIRM"
+import { events as publicAllocatorEvents } from "../abi/MorphoPublicAllocator"
+
 import {
+  AdaptativeCurveIRMBorrowRateUpdate,
   MarketAccrueInterest,
   MarketBorrow,
   MarketCreateMarket,
@@ -13,6 +17,12 @@ import {
   MarketSupplyCollateral,
   MarketWithdraw,
   MarketWithdrawCollateral,
+  PublicAllocatorPublicReallocateTo,
+  PublicAllocatorPublicWithdrawal,
+  PublicAllocatorSetAdmin,
+  PublicAllocatorSetFee,
+  PublicAllocatorSetFlowCaps,
+  PublicAllocatorTransferFee,
   VaultAccrueInterest,
   VaultCreateMetaMorpho,
   VaultDeposit,
@@ -42,7 +52,7 @@ import {
 } from "../model"
 import { CHAIN_ID } from "../constants"
 import { upsertAsset } from "./assetHandler"
-import { Store } from "@subsquid/typeorm-store"
+import type { Store } from "@subsquid/typeorm-store"
 import { upsertOracle } from "./oracleHandler"
 import { vaults } from "../main"
 import { getRedis, VAULTS_KEY, VAULTS_PRELOADED_HEIGHT_KEY } from "../services/redis"
@@ -88,11 +98,19 @@ type VaultEvent =
   | VaultUpdateLastTotalAssets
   | VaultWithdraw
 
-type EventModel = MorphoBlueEvent | MetaMorphoFactoryEvent | VaultEvent
+type PublicAllocatorEvent =
+  | PublicAllocatorPublicReallocateTo
+  | PublicAllocatorPublicWithdrawal
+  | PublicAllocatorSetAdmin
+  | PublicAllocatorSetFee
+  | PublicAllocatorSetFlowCaps
+  | PublicAllocatorTransferFee
 
-type EventModelConstructor = {
-  new (props: any): EventModel
-}
+type AdaptativeCurveIRMEvent = AdaptativeCurveIRMBorrowRateUpdate
+
+type EventModel = MorphoBlueEvent | MetaMorphoFactoryEvent | VaultEvent | PublicAllocatorEvent | AdaptativeCurveIRMEvent
+
+type EventModelConstructor = new (props: any) => EventModel
 
 const eventMapping: Record<string, { event: any; model: EventModelConstructor }> = {
   // MorphoBlue events
@@ -157,6 +175,32 @@ const eventMapping: Record<string, { event: any; model: EventModelConstructor }>
     model: VaultUpdateLastTotalAssets,
   },
   [vaultEvents.Withdraw.topic]: { event: vaultEvents.Withdraw, model: VaultWithdraw },
+
+  // Public allocator events
+  [publicAllocatorEvents.PublicReallocateTo.topic]: {
+    event: publicAllocatorEvents.PublicReallocateTo,
+    model: PublicAllocatorPublicReallocateTo,
+  },
+  [publicAllocatorEvents.PublicWithdrawal.topic]: {
+    event: publicAllocatorEvents.PublicWithdrawal,
+    model: PublicAllocatorPublicWithdrawal,
+  },
+  [publicAllocatorEvents.SetAdmin.topic]: { event: publicAllocatorEvents.SetAdmin, model: PublicAllocatorSetAdmin },
+  [publicAllocatorEvents.SetFee.topic]: { event: publicAllocatorEvents.SetFee, model: PublicAllocatorSetFee },
+  [publicAllocatorEvents.SetFlowCaps.topic]: {
+    event: publicAllocatorEvents.SetFlowCaps,
+    model: PublicAllocatorSetFlowCaps,
+  },
+  [publicAllocatorEvents.TransferFee.topic]: {
+    event: publicAllocatorEvents.TransferFee,
+    model: PublicAllocatorTransferFee,
+  },
+
+  // Adaptative curve IRM events
+  [adaptativeCurveIRMEvents.BorrowRateUpdate.topic]: {
+    event: adaptativeCurveIRMEvents.BorrowRateUpdate,
+    model: AdaptativeCurveIRMBorrowRateUpdate,
+  },
 }
 
 export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventModel | undefined> {
