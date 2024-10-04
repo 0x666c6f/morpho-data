@@ -1,13 +1,15 @@
 import { TypeormDatabase } from "@subsquid/typeorm-store"
-import { DataSource } from "typeorm"
 import { processor, VAULT_TOPICS } from "./processor"
 import { handleEvent } from "./handlers/genericHandler"
-import { Oracle, VaultCreateMetaMorpho } from "./model"
+import { Oracle } from "./model"
 import { updateOraclePrice } from "./handlers/oracleHandler"
-import { events as vaultEvents } from "./abi/MetaMorpho"
-import { SnakeNamingStrategy } from "typeorm-naming-strategies"
 import { getRedis, VAULTS_KEY, VAULTS_PRELOADED_HEIGHT_KEY } from "./services/redis"
 import { assertNotNull } from "@subsquid/evm-processor"
+
+// @ts-ignore
+BigInt.prototype.toJSON = function () {
+  return this.toString()
+}
 
 export const vaults = new Set<string>()
 function start() {
