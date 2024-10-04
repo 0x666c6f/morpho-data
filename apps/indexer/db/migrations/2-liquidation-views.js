@@ -86,6 +86,17 @@ module.exports = class LiquidationViews00000000000002 {
       CREATE INDEX idx_supply_collateral_market_assets ON market_supply_collateral(market_id, assets);
       CREATE INDEX idx_borrow_on_behalf_market ON market_borrow(on_behalf, market_id);
       CREATE INDEX idx_supply_collateral_on_behalf_market ON market_supply_collateral(on_behalf, market_id);
+
+      CREATE INDEX IF NOT EXISTS idx_market_id_block_timestamp ON adaptative_curve_irm_borrow_rate_update (market_id, block_timestamp);
+      CREATE INDEX IF NOT EXISTS idx_market_create_market_oracle ON market_create_market (oracle);
+      CREATE INDEX idx_adaptative_curve_irm_market_timestamp ON adaptative_curve_irm_borrow_rate_update (market_id, block_timestamp DESC);
+        CREATE INDEX idx_market_borrow_market_on_behalf ON market_borrow (market_id, on_behalf);
+        CREATE INDEX idx_market_repay_market_on_behalf ON market_repay (market_id, on_behalf);
+        CREATE INDEX idx_market_liquidate_market_borrower ON market_liquidate (market_id, borrower);
+
+    CREATE INDEX IF NOT EXISTS idx_market_supply_collateral_market_on_behalf ON market_supply_collateral (market_id, on_behalf);
+    CREATE INDEX IF NOT EXISTS idx_market_withdraw_collateral_market_on_behalf ON market_withdraw_collateral (market_id, on_behalf);
+    CREATE INDEX IF NOT EXISTS idx_market_accrue_interest_market_block_timestamp ON market_accrue_interest (market_id, block_timestamp DESC);
     `)
     await db.query(`
       -- Constants
@@ -279,98 +290,106 @@ module.exports = class LiquidationViews00000000000002 {
       `)
 
     await db.query(`
-        CREATE OR REPLACE VIEW all_positions_ltv AS
-        WITH position_data AS (
+        CREATE OR REPLACE VIEW public.all_positions_health AS
+        WITH latest_borrow_rate AS (
+            SELECT DISTINCT ON (market_id)
+                market_id,
+                avg_borrow_rate,
+                rate_at_target,
+                block_timestamp
+            FROM adaptative_curve_irm_borrow_rate_update
+            ORDER BY market_id, block_timestamp DESC
+        ),
+        market_data AS (
+            SELECT
+                m.market_id,
+                m.lltv AS liquidation_threshold,
+                m.collateral_token,
+                m.loan_token,
+                c.current_borrow_shares,
+                c.current_borrow_assets_with_interest,
+                lb.rate_at_target,
+                lb.block_timestamp as last_update,
+                EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - lb.block_timestamp::timestamp)) AS time_elapsed,
+                o.price AS oracle_price
+            FROM market_create_market m
+            JOIN current_market_borrow_state c ON m.market_id = c.market_id
+            JOIN latest_borrow_rate lb ON m.market_id = lb.market_id
+            LEFT JOIN oracle o ON m.oracle = o.id
+        ),
+        accrued_interest AS (
+            SELECT
+                market_id,
+                ROUND(current_borrow_assets_with_interest + (current_borrow_assets_with_interest * (rate_at_target::numeric / 1e18) * (time_elapsed / 31536000)))::numeric AS updated_borrow_assets_with_interest,
+                current_borrow_shares,
+                oracle_price,
+                liquidation_threshold,
+                collateral_token,
+                loan_token
+            FROM market_data
+        ),
+        position_collateral AS (
+            SELECT
+                market_id,
+                on_behalf AS borrower,
+                SUM(CASE WHEN type = 'supply' THEN amount ELSE -amount END) AS net_collateral
+            FROM (
+                SELECT market_id, on_behalf, assets AS amount, 'supply' AS type
+                FROM market_supply_collateral
+                UNION ALL
+                SELECT market_id, on_behalf, assets AS amount, 'withdraw' AS type
+                FROM market_withdraw_collateral
+            ) collateral_actions
+            GROUP BY market_id, on_behalf
+        ),
+        position_data AS (
             SELECT
                 p.id AS position_id,
                 p.borrower,
                 p.market_id,
-                p.collateral_amount,
                 p.borrow_amount,
                 p.borrow_shares,
-                m.lltv AS liquidation_threshold,
-                m.collateral_token,
-                m.loan_token,
-                COALESCE(o.price, 0) AS oracle_price
+                COALESCE(pc.net_collateral, 0) AS collateral_amount,
+                ai.updated_borrow_assets_with_interest,
+                ai.current_borrow_shares,
+                ai.oracle_price,
+                ai.liquidation_threshold,
+                ai.collateral_token,
+                ai.loan_token
             FROM positions p
-            JOIN market_create_market m ON p.market_id = m.market_id
-            LEFT JOIN oracle o ON m.oracle = o.id
-            WHERE p.borrow_shares > 0  -- Only consider positions with active borrows
+            JOIN accrued_interest ai ON p.market_id = ai.market_id
+            LEFT JOIN position_collateral pc ON p.market_id = pc.market_id AND p.borrower = pc.borrower
+            WHERE p.borrow_shares > 0
         )
         SELECT
-            position_id,
-            borrower,
-            market_id,
-            collateral_amount,
-            borrow_amount,
-            borrow_shares,
-            liquidation_threshold,
-            collateral_token,
-            loan_token,
-            oracle_price,
-            (borrow_amount * 1e18) :: numeric AS scaled_borrow_amount,
-            (collateral_amount * oracle_price / 1e18) :: numeric AS collateral_value_in_loan_token,
+            pd.position_id,
+            pd.borrower,
+            pd.market_id,
+            pd.collateral_amount,
+            GREATEST(
+                ROUND((pd.borrow_shares * pd.updated_borrow_assets_with_interest / NULLIF(pd.current_borrow_shares, 0))::numeric),
+                pd.borrow_amount::numeric
+            )::numeric AS borrow_amount,
+            pd.borrow_shares,
+            pd.liquidation_threshold,
+            pd.collateral_token,
+            pd.loan_token,
+            pd.oracle_price,
+            ((pd.collateral_amount * pd.oracle_price) / 1e36)::numeric AS collateral_value_in_loan_token,
             CASE
-                WHEN collateral_amount > 0 AND oracle_price > 0 THEN
-                    (borrow_amount * 1e36) :: numeric / NULLIF((collateral_amount * oracle_price) :: numeric, 0)
+                WHEN pd.borrow_amount > 0 AND pd.collateral_amount > 0 AND pd.oracle_price > 0 THEN
+                    (((pd.liquidation_threshold * pd.collateral_amount * pd.oracle_price) / 1e36) /
+                    (pd.borrow_amount * 1e18))::numeric
                 ELSE NULL
-            END AS current_ltv,
-            (liquidation_threshold :: numeric / 1e18) AS lltv_decimal,
+            END AS health_factor,
+            (pd.liquidation_threshold / 1e18)::numeric AS lltv_decimal,
             CASE
-                WHEN collateral_amount > 0 AND oracle_price > 0 AND liquidation_threshold > 0 THEN
-                    ((borrow_amount * 1e36) :: numeric / NULLIF((collateral_amount * oracle_price) :: numeric, 0)) > (liquidation_threshold :: numeric / 1e18)
-                ELSE FALSE
+                WHEN pd.borrow_amount > 0 AND pd.collateral_amount > 0 AND pd.oracle_price > 0 THEN
+                    (((pd.liquidation_threshold * pd.collateral_amount * pd.oracle_price) / 1e36) /
+                    (pd.borrow_amount * 1e18)) < 1
+                ELSE false
             END AS is_liquidatable
-        FROM position_data
-        WHERE borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0;
-    `)
-
-    await db.query(`
-      CREATE OR REPLACE VIEW all_positions_health AS
-      WITH position_data AS (
-          SELECT
-              p.id AS position_id,
-              p.borrower,
-              p.market_id,
-              p.collateral_amount,
-              p.borrow_amount,
-              p.borrow_shares,
-              m.lltv AS liquidation_threshold,
-              m.collateral_token,
-              m.loan_token,
-              COALESCE(o.price, 0) AS oracle_price
-          FROM positions p
-          JOIN market_create_market m ON p.market_id = m.market_id
-          LEFT JOIN oracle o ON m.oracle = o.id
-          WHERE p.borrow_shares > 0 -- Only consider positions with active borrows
-      )
-      SELECT
-          position_id,
-          borrower,
-          market_id,
-          collateral_amount,
-          borrow_amount,
-          borrow_shares,
-          liquidation_threshold,
-          collateral_token,
-          loan_token,
-          oracle_price,
-          (collateral_amount * oracle_price / 1e36) :: numeric AS collateral_value_in_loan_token,
-          CASE
-              WHEN borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0 THEN
-                  (liquidation_threshold * collateral_amount * oracle_price / 1e36) :: numeric /
-                  (borrow_amount * 1e18) :: numeric
-              ELSE NULL
-          END AS health_factor,
-          (liquidation_threshold :: numeric / 1e18) AS lltv_decimal,
-          CASE
-              WHEN borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0 THEN
-                  (liquidation_threshold * collateral_amount * oracle_price / 1e36) :: numeric /
-                  (borrow_amount * 1e18) :: numeric < 1
-              ELSE FALSE
-          END AS is_liquidatable
-      FROM position_data
-      WHERE borrow_amount > 0 AND collateral_amount > 0 AND oracle_price > 0;
+        FROM position_data pd;
     `)
 
     await db.query(`
