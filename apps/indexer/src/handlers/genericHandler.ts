@@ -57,7 +57,7 @@ import { upsertOracle } from "./oracleHandler"
 import { vaults } from "../main"
 import { getRedis, VAULTS_KEY, VAULTS_PRELOADED_HEIGHT_KEY } from "../services/redis"
 
-type MorphoBlueEvent =
+export type MorphoBlueEvent =
   | MarketAccrueInterest
   | MarketBorrow
   | MarketCreateMarket
@@ -69,9 +69,9 @@ type MorphoBlueEvent =
   | MarketWithdraw
   | MarketWithdrawCollateral
 
-type MetaMorphoFactoryEvent = VaultCreateMetaMorpho
+export type MetaMorphoFactoryEvent = VaultCreateMetaMorpho
 
-type VaultEvent =
+export type VaultEvent =
   | VaultAccrueInterest
   | VaultDeposit
   | VaultReallocateSupply
@@ -98,7 +98,7 @@ type VaultEvent =
   | VaultUpdateLastTotalAssets
   | VaultWithdraw
 
-type PublicAllocatorEvent =
+export type PublicAllocatorEvent =
   | PublicAllocatorPublicReallocateTo
   | PublicAllocatorPublicWithdrawal
   | PublicAllocatorSetAdmin
@@ -106,11 +106,16 @@ type PublicAllocatorEvent =
   | PublicAllocatorSetFlowCaps
   | PublicAllocatorTransferFee
 
-type AdaptativeCurveIRMEvent = AdaptativeCurveIRMBorrowRateUpdate
+export type AdaptativeCurveIRMEvent = AdaptativeCurveIRMBorrowRateUpdate
 
-type EventModel = MorphoBlueEvent | MetaMorphoFactoryEvent | VaultEvent | PublicAllocatorEvent | AdaptativeCurveIRMEvent
+export type EventModel =
+  | MorphoBlueEvent
+  | MetaMorphoFactoryEvent
+  | VaultEvent
+  | PublicAllocatorEvent
+  | AdaptativeCurveIRMEvent
 
-type EventModelConstructor = new (props: any) => EventModel
+export type EventModelConstructor = new (props: any) => EventModel
 
 const eventMapping: Record<string, { event: any; model: EventModelConstructor }> = {
   // MorphoBlue events
