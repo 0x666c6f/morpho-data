@@ -1,13 +1,13 @@
-import { Store } from "@subsquid/typeorm-store"
-import { Address } from "viem"
+import type { Store } from "@subsquid/typeorm-store"
+import type { Address } from "viem"
 import OracleABI from "../../abi/Oracle.json"
 import { Oracle } from "../model"
-import { ProcessorContext } from "../processor"
+import type { ProcessorContext } from "../types"
 import { publicClient } from "../services/chain"
 import { ZERO_ADDRESS } from "../constants"
 import { getContract } from "viem"
 
-export async function upsertOracle(ctx: ProcessorContext<Store>, address: Address): Promise<Oracle> {
+export async function upsertOracle(ctx: ProcessorContext<Store>, address: Address): Promise<Oracle | undefined> {
   let oracle = await ctx.store.get(Oracle, address)
   if (oracle == null) {
     oracle = new Oracle({ id: address })
@@ -27,9 +27,9 @@ export async function upsertOracle(ctx: ProcessorContext<Store>, address: Addres
     }
     ctx.log.info("Adding new missing oracle")
     ctx.log.info(oracle)
-    await ctx.store.save(oracle)
+    return oracle
   }
-  return oracle
+  return undefined
 }
 
 export async function updateOraclePrice(

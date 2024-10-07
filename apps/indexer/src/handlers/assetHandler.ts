@@ -1,12 +1,12 @@
-import { Store } from "@subsquid/typeorm-store"
+import type { Store } from "@subsquid/typeorm-store"
 import { Asset } from "../model"
-import { ProcessorContext } from "../processor"
 import ERC20_ABI from "../../abi/ERC20.json"
-import { Address, getContract } from "viem"
+import { type Address, getContract } from "viem"
 import { publicClient } from "../services/chain"
 import { MAKER, ZERO_ADDRESS } from "../constants"
+import type { ProcessorContext } from "../types"
 
-export async function upsertAsset(ctx: ProcessorContext<Store>, address: Address): Promise<Asset> {
+export async function upsertAsset(ctx: ProcessorContext<Store>, address: Address): Promise<Asset | undefined> {
   let asset = await ctx.store.get(Asset, address)
   if (asset === undefined) {
     asset = new Asset({ id: address })
@@ -40,7 +40,7 @@ export async function upsertAsset(ctx: ProcessorContext<Store>, address: Address
 
     ctx.log.info("Adding new missing asset")
     ctx.log.info(asset)
-    await ctx.store.save(asset)
+    return asset
   }
-  return asset
+  return undefined
 }

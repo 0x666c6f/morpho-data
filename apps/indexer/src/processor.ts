@@ -1,5 +1,6 @@
 import { assertNotNull } from "@subsquid/util-internal"
 import {
+  type BlockData,
   type BlockHeader,
   type DataHandlerContext,
   EvmBatchProcessor,
@@ -18,6 +19,9 @@ import { events as metaMorphoFactoryEvents } from "./abi/MetaMorphoFactory"
 import { events as vaultEvents } from "./abi/MetaMorpho"
 import { events as adaptativeCurveIRMEvents } from "./abi/AdaptativeCurveIRM"
 import { events as publicAllocatorEvents } from "./abi/MorphoPublicAllocator"
+import type { Store } from "@subsquid/typeorm-store"
+import { handleEvent } from "./handlers/genericHandler"
+import type { EventMap, EventModel, Fields, ProcessorContext } from "./types"
 
 export const VAULT_TOPICS = [
   vaultEvents.AccrueInterest.topic,
@@ -115,8 +119,28 @@ export const processor = new EvmBatchProcessor()
     topic0: [adaptativeCurveIRMEvents.BorrowRateUpdate.topic],
   })
 
-export type Fields = EvmBatchProcessorFields<typeof processor>
-export type Block = BlockHeader<Fields>
-export type Log = _Log<Fields>
-export type Transaction = _Transaction<Fields>
-export type ProcessorContext<Store> = DataHandlerContext<Store, Fields>
+export async function processLogsGeneric<T>(
+  ctx: ProcessorContext<Store>,
+  block: BlockData<Fields>,
+  eventMap: EventMap
+): Promise<void> {
+  for (const log of block.logs) {
+    await handleEvent(ctx, log, eventMap)
+  }
+}
+
+export async function processBlockGeneric(ctx: ProcessorContext<Store>, block: BlockData<Fields>, eventMap: EventMap) {
+  await processLogsGeneric(ctx, block, eventMap)
+}
+
+export async function processBlocksGeneric(ctx: ProcessorContext<Store>): Promise<void> {
+  let eventMap: EventMap = {}
+  for (const block of ctx.blocks) {
+    ctx.log.info(`Processing block ${block.header.height}`)
+    await processBlockGeneric(ctx, block, eventMap)
+  }
+  for (const eventType of Object.keys(eventMap)) {
+    await ctx.store.upsert(eventMap[eventType])
+  }
+  eventMap = {}
+}

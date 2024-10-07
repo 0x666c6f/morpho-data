@@ -1,6 +1,5 @@
 import { TypeormDatabase } from "@subsquid/typeorm-store"
-import { processor, VAULT_TOPICS } from "./processor"
-import { type EventModel, handleEvent } from "./handlers/genericHandler"
+import { processBlocksGeneric, processor, VAULT_TOPICS } from "./processor"
 import { Oracle } from "./model"
 import { updateOraclePrice } from "./handlers/oracleHandler"
 import { getRedis, VAULTS_KEY, VAULTS_PRELOADED_HEIGHT_KEY } from "./services/redis"
@@ -12,41 +11,25 @@ BigInt.prototype.toJSON = function () {
 }
 
 export const vaults = new Set<string>()
-function startMain() {
+function startMain(name?: string) {
   setupProcessor().then(() => {
     processor.run(
-      new TypeormDatabase({ supportHotBlocks: true, stateSchema: `subsquid-main-${process.env.CHAIN_ID}` }),
+      new TypeormDatabase({
+        supportHotBlocks: true,
+        stateSchema: name ? `main-${process.env.CHAIN_ID}-${name}` : `main-${process.env.CHAIN_ID}`,
+      }),
       async ctx => {
-        let eventMap: { [key: string]: EventModel[] } = {}
-        for (const c of ctx.blocks) {
-          const oracles = await ctx.store.find(Oracle)
-          ctx.log.info(`Processing block ${c.header.height}`)
-          for (const log of c.logs) {
-            const entity = await handleEvent(ctx, log)
-            if (entity) {
-              if (!eventMap[log.topics[0]]) eventMap[log.topics[0]] = []
-              // await ctx.store.upsert(entity)
-              eventMap[log.topics[0]].push(entity)
-              ctx.log.info(`New event ${entity.constructor.name}`)
-              ctx.log.info(entity)
-            }
-          }
-
-          // Update oracle prices every 100 blocks, once indexer is synced
-          if (ctx.isHead && c.header.height % 100 === 0) {
-            ctx.log.info("Updating oracle prices...")
-            await Promise.all(
-              oracles.map(async oracle => {
-                await updateOraclePrice(ctx, oracle)
-              })
-            )
-            ctx.log.info("Oracle update complete")
-          }
+        await processBlocksGeneric(ctx)
+        const oracles = await ctx.store.find(Oracle)
+        if (ctx.isHead && ctx.blocks[ctx.blocks.length - 1].header.height % 100 === 0) {
+          ctx.log.info("Updating oracle prices...")
+          await Promise.all(
+            oracles.map(async oracle => {
+              await updateOraclePrice(ctx, oracle)
+            })
+          )
+          ctx.log.info("Oracle update complete")
         }
-        for (const eventType of Object.keys(eventMap)) {
-          await ctx.store.upsert(eventMap[eventType])
-        }
-        eventMap = {}
       }
     )
   })

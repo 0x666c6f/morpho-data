@@ -1,10 +1,8 @@
-import type { Log, ProcessorContext } from "../processor"
 import { events as morphoBlueEvents } from "../abi/MorphoBlue"
 import { events as metaMorphoFactoryEvents } from "../abi/MetaMorphoFactory"
 import { events as vaultEvents } from "../abi/MetaMorpho"
 import { events as adaptativeCurveIRMEvents } from "../abi/AdaptativeCurveIRM"
 import { events as publicAllocatorEvents } from "../abi/MorphoPublicAllocator"
-
 import {
   AdaptativeCurveIRMBorrowRateUpdate,
   MarketAccrueInterest,
@@ -56,66 +54,15 @@ import type { Store } from "@subsquid/typeorm-store"
 import { upsertOracle } from "./oracleHandler"
 import { vaults } from "../main"
 import { getRedis, VAULTS_KEY, VAULTS_PRELOADED_HEIGHT_KEY } from "../services/redis"
-
-export type MorphoBlueEvent =
-  | MarketAccrueInterest
-  | MarketBorrow
-  | MarketCreateMarket
-  | MarketLiquidate
-  | MarketRepay
-  | MarketSetFee
-  | MarketSupply
-  | MarketSupplyCollateral
-  | MarketWithdraw
-  | MarketWithdrawCollateral
-
-export type MetaMorphoFactoryEvent = VaultCreateMetaMorpho
-
-export type VaultEvent =
-  | VaultAccrueInterest
-  | VaultDeposit
-  | VaultReallocateSupply
-  | VaultReallocateWithdraw
-  | VaultRevokePendingCap
-  | VaultRevokePendingGuardian
-  | VaultRevokePendingMarketRemoval
-  | VaultRevokePendingTimelock
-  | VaultSetCap
-  | VaultSetCurator
-  | VaultSetFee
-  | VaultSetFeeRecipient
-  | VaultSetGuardian
-  | VaultSetIsAllocator
-  | VaultSetTimelock
-  | VaultSetSkimRecipient
-  | VaultSetSupplyQueue
-  | VaultSetWithdrawQueue
-  | VaultSkim
-  | VaultSubmitCap
-  | VaultSubmitGuardian
-  | VaultSubmitMarketRemoval
-  | VaultSubmitTimelock
-  | VaultUpdateLastTotalAssets
-  | VaultWithdraw
-
-export type PublicAllocatorEvent =
-  | PublicAllocatorPublicReallocateTo
-  | PublicAllocatorPublicWithdrawal
-  | PublicAllocatorSetAdmin
-  | PublicAllocatorSetFee
-  | PublicAllocatorSetFlowCaps
-  | PublicAllocatorTransferFee
-
-export type AdaptativeCurveIRMEvent = AdaptativeCurveIRMBorrowRateUpdate
-
-export type EventModel =
-  | MorphoBlueEvent
-  | MetaMorphoFactoryEvent
-  | VaultEvent
-  | PublicAllocatorEvent
-  | AdaptativeCurveIRMEvent
-
-export type EventModelConstructor = new (props: any) => EventModel
+import type {
+  EventModelConstructor,
+  EventModel,
+  MorphoBlueEvent,
+  VaultEvent,
+  EventMap,
+  ProcessorContext,
+  Log,
+} from "../types"
 
 const eventMapping: Record<string, { event: any; model: EventModelConstructor }> = {
   // MorphoBlue events
@@ -208,7 +155,12 @@ const eventMapping: Record<string, { event: any; model: EventModelConstructor }>
   },
 }
 
-export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promise<EventModel | undefined> {
+export async function handleEvent(ctx: ProcessorContext<Store>, log: Log, eventMap: EventMap) {
+  //Setup event arrays if they don't exist
+  if (!eventMap.asset) eventMap.asset = []
+  if (!eventMap.oracle) eventMap.oracle = []
+  if (!eventMap[log.topics[0]]) eventMap[log.topics[0]] = []
+
   const eventData = eventMapping[log.topics[0]]
   if (!eventData) {
     throw new Error(`Unsupported event topic: ${log.topics[0]}`)
@@ -240,11 +192,14 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promi
   let entityModel: EventModel
 
   if (model === MarketCreateMarket) {
-    await Promise.all([
-      upsertAsset(ctx, decodedEvent.marketParams.loanToken),
-      upsertAsset(ctx, decodedEvent.marketParams.collateralToken),
-      upsertOracle(ctx, decodedEvent.marketParams.oracle),
-    ])
+    const loanAsset = await upsertAsset(ctx, decodedEvent.marketParams.loanToken)
+    const collateralAsset = await upsertAsset(ctx, decodedEvent.marketParams.collateralToken)
+    const oracle = await upsertOracle(ctx, decodedEvent.marketParams.oracle)
+
+    if (loanAsset && !eventMap.asset.find(a => a.id === loanAsset.id)) eventMap.asset.push(loanAsset)
+    if (collateralAsset && !eventMap.asset.find(a => a.id === collateralAsset.id)) eventMap.asset.push(collateralAsset)
+    if (oracle && !eventMap.oracle.find(o => o.id === oracle.id)) eventMap.oracle.push(oracle)
+
     entityModel = new model({
       ...baseEventData,
       ...decodedEvent,
@@ -261,5 +216,8 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log): Promi
   ;(entityModel as MorphoBlueEvent).marketId = decodedEvent.id
   ;(entityModel as VaultEvent).vaultId = log.address
 
-  return entityModel
+  ctx.log.info(`New event ${entityModel.constructor.name}`)
+  ctx.log.info(entityModel)
+
+  eventMap[log.topics[0]].push(entityModel)
 }
