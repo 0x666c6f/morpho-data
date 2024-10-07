@@ -4,6 +4,10 @@ import { Oracle } from "./model"
 import { updateOraclePrice } from "./handlers/oracleHandler"
 import { getRedis, VAULTS_KEY, VAULTS_PRELOADED_HEIGHT_KEY } from "./services/redis"
 import { assertNotNull } from "@subsquid/evm-processor"
+import { publicClient } from "./services/chain"
+import { METAMORPHO_FACTORY_ADDRESS } from "./constants"
+import { events as metaMorphoFactoryEvents } from "./abi/MetaMorphoFactory"
+import { Address, parseAbiItem } from "viem"
 
 // @ts-ignore
 BigInt.prototype.toJSON = function () {
@@ -36,29 +40,30 @@ function startMain(name?: string) {
 }
 
 async function setupProcessor() {
-  const redis = getRedis()
-  const cachedVaults = await redis.sMembers(VAULTS_KEY)
-  for (const vault of cachedVaults) {
-    vaults.add(vault)
-  }
-  const preloadHeight = await redis.get(VAULTS_PRELOADED_HEIGHT_KEY)
-  const preloadedData = preloadHeight && cachedVaults.length > 0
-  if (preloadedData) {
-    processor.addLog({
-      address: Array.from(vaults),
-      range: {
-        from: Number(assertNotNull(process.env.START_BLOCK, "No start block supplied")),
-        to: Number(preloadHeight),
-      },
-      topic0: VAULT_TOPICS,
-    })
+  const head = await publicClient.getBlockNumber()
+  const start = BigInt(assertNotNull(process.env.START_BLOCK, "No start block supplied"))
+  const logs = await publicClient.getLogs({
+    address: METAMORPHO_FACTORY_ADDRESS,
+    fromBlock: start,
+    toBlock: BigInt(head),
+    event: parseAbiItem(
+      "event CreateMetaMorpho(address indexed metaMorpho,address indexed caller,address initialOwner,uint256 initialTimelock,address indexed asset,string name,string symbol,bytes32 salt)"
+    ),
+  })
+  for (const log of logs) {
+    vaults.add(log.args.metaMorpho as Address)
   }
   processor.addLog({
-    range: preloadedData
-      ? {
-          from: Number(preloadHeight) + 1,
-        }
-      : undefined,
+    address: Array.from(vaults),
+    range: {
+      from: Number(start),
+      to: Number(head),
+    },
+    topic0: VAULT_TOPICS,
+  })
+
+  processor.addLog({
+    range: { from: Number(head) + 1 },
     topic0: VAULT_TOPICS,
   })
 }

@@ -1,9 +1,3 @@
-import { events as morphoBlueEvents } from "./abi/MorphoBlue"
-import { events as metaMorphoFactoryEvents } from "./abi/MetaMorphoFactory"
-import { events as vaultEvents } from "./abi/MetaMorpho"
-import { events as adaptativeCurveIRMEvents } from "./abi/AdaptativeCurveIRM"
-import { events as publicAllocatorEvents } from "./abi/MorphoPublicAllocator"
-
 import type {
   AdaptativeCurveIRMBorrowRateUpdate,
   Asset,
@@ -51,14 +45,12 @@ import type {
   VaultUpdateLastTotalAssets,
   VaultWithdraw,
 } from "./model"
-import {
-  type BlockData,
-  type BlockHeader,
-  type DataHandlerContext,
-  EvmBatchProcessor,
-  type EvmBatchProcessorFields,
-  type Log as _Log,
-  type Transaction as _Transaction,
+import type {
+  BlockHeader,
+  DataHandlerContext,
+  EvmBatchProcessorFields,
+  Log as _Log,
+  Transaction as _Transaction,
 } from "@subsquid/evm-processor"
 import type { processor } from "./processor"
 
