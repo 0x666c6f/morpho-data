@@ -179,7 +179,6 @@ export async function handleEvent(ctx: ProcessorContext<Store>, log: Log, eventM
     const redis = getRedis()
     await redis.sAdd(VAULTS_KEY, decodedEvent.metaMorpho)
     await redis.set(VAULTS_PRELOADED_HEIGHT_KEY, log.block.height)
-    throw new Error("VaultCreateMetaMorpho created, restarting process")
   }
 
   const baseEventData = {
